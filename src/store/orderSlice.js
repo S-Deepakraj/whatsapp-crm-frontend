@@ -22,6 +22,14 @@ export const updateOrderStatus = createAsyncThunk(
   }
 );
 
+export const assignOrder = createAsyncThunk(
+  'orders/assign',
+  async ({ id, technicianId }) => {
+    const { data } = await api.patch(`/orders/${id}/assign`, { technicianId });
+    return data;
+  }
+);
+
 const orderSlice = createSlice({
   name: 'orders',
   initialState: { data: [], total: 0, loading: false },
@@ -39,6 +47,10 @@ const orderSlice = createSlice({
         state.total += 1;
       })
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
+        const idx = state.data.findIndex((o) => o.id === action.payload.id);
+        if (idx !== -1) state.data[idx] = action.payload;
+      })
+      .addCase(assignOrder.fulfilled, (state, action) => {
         const idx = state.data.findIndex((o) => o.id === action.payload.id);
         if (idx !== -1) state.data[idx] = action.payload;
       });

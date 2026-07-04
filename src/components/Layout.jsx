@@ -8,6 +8,8 @@ const navItems = [
   { to: '/', label: 'Dashboard' },
   { to: '/customers', label: 'Customers' },
   { to: '/orders', label: 'Orders' },
+  { to: '/day-view', label: 'Day View' },
+  { to: '/technicians', label: 'Technicians' },
   { to: '/test-catalog', label: 'Test Catalog' },
   { to: '/followups', label: 'Follow-Ups' },
   { to: '/settings', label: 'Settings' },

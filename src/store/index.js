@@ -6,6 +6,7 @@ import visitReducer    from './visitSlice';
 import settingsReducer from './settingsSlice';
 import testCatalogReducer from './testCatalogSlice';
 import orderReducer       from './orderSlice';
+import technicianReducer  from './technicianSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,5 +17,6 @@ export const store = configureStore({
     settings:    settingsReducer,
     testCatalog: testCatalogReducer,
     orders:      orderReducer,
+    technicians: technicianReducer,
   },
 });

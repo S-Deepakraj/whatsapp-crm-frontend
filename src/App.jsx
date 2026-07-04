@@ -14,6 +14,9 @@ import FollowupsPage from './pages/FollowupsPage';
 import SettingsPage from './pages/SettingsPage';
 import OrdersPage from './pages/OrdersPage';
 import TestCatalogPage from './pages/TestCatalogPage';
+import DayViewPage from './pages/DayViewPage';
+import TechniciansPage from './pages/TechniciansPage';
+import TechnicianStatusPage from './pages/TechnicianStatusPage';
 
 function ProtectedRoute({ children }) {
   const token = useAppSelector((s) => s.auth.token);
@@ -29,6 +32,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/t/:token" element={<TechnicianStatusPage />} />
       <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
       <Route path="/customers/new" element={<ProtectedRoute><CustomerFormPage /></ProtectedRoute>} />
@@ -36,6 +40,8 @@ export default function App() {
       <Route path="/customers/:id" element={<ProtectedRoute><CustomerProfilePage /></ProtectedRoute>} />
       <Route path="/followups" element={<ProtectedRoute><FollowupsPage /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+      <Route path="/day-view" element={<ProtectedRoute><DayViewPage /></ProtectedRoute>} />
+      <Route path="/technicians" element={<ProtectedRoute><TechniciansPage /></ProtectedRoute>} />
       <Route path="/test-catalog" element={<ProtectedRoute><TestCatalogPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     </Routes>

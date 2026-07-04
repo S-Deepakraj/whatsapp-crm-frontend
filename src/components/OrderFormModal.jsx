@@ -6,10 +6,10 @@ import { fetchTests } from '../store/testCatalogSlice';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 
-const TIME_SLOTS = [
-  { value: 'morning',   label: 'Morning' },
-  { value: 'afternoon', label: 'Afternoon' },
-  { value: 'evening',   label: 'Evening' },
+const SLOT_PRESETS = [
+  { label: 'Morning',   start: '06:30', end: '06:45' },
+  { label: 'Afternoon', start: '13:00', end: '13:30' },
+  { label: 'Evening',   start: '17:00', end: '17:30' },
 ];
 
 const EMPTY_LINE = { testCatalogId: '', testLabel: '', query: '', agreedPrice: '' };
@@ -34,7 +34,8 @@ export default function OrderFormModal({ onClose, onCreated }) {
 
   const [collectionAddress, setCollectionAddress] = useState('');
   const [scheduledDate, setScheduledDate] = useState(tomorrow());
-  const [timeSlot, setTimeSlot] = useState('morning');
+  const [slotStart, setSlotStart] = useState(SLOT_PRESETS[0].start);
+  const [slotEnd, setSlotEnd] = useState(SLOT_PRESETS[0].end);
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState([{ ...EMPTY_LINE }]);
 
@@ -114,6 +115,10 @@ function updateLine(i, field, value) {
       setError('Collection address is required.');
       return;
     }
+    if (slotEnd <= slotStart) {
+      setError('End time must be after start time.');
+      return;
+    }
     if (lines.some((l) => !l.testCatalogId || l.agreedPrice === '')) {
       setError('Fill in a test and agreed price for every line.');
       return;
@@ -136,7 +141,8 @@ function updateLine(i, field, value) {
         customerId,
         collectionAddress: collectionAddress.trim(),
         scheduledDate,
-        timeSlot,
+        slotStart,
+        slotEnd,
         notes: notes || null,
         testLines: lines.map((l) => ({
           testCatalogId: Number(l.testCatalogId),
@@ -228,25 +234,48 @@ function updateLine(i, field, value) {
             </div>
 
             {/* Date / slot */}
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm"
-                />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium text-gray-700">Collection window</label>
+                <div className="flex gap-1">
+                  {SLOT_PRESETS.map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => { setSlotStart(p.start); setSlotEnd(p.end); }}
+                      className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Time slot</label>
-                <select
-                  value={timeSlot}
-                  onChange={(e) => setTimeSlot(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm"
-                >
-                  {TIME_SLOTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
+              <div className="flex gap-3 items-center">
+                <input
+                  type="time"
+                  step="900"
+                  value={slotStart}
+                  onChange={(e) => setSlotStart(e.target.value)}
+                  className="flex-1 border rounded px-3 py-2 text-sm"
+                />
+                <span className="text-gray-400 text-sm">to</span>
+                <input
+                  type="time"
+                  step="900"
+                  value={slotEnd}
+                  onChange={(e) => setSlotEnd(e.target.value)}
+                  className="flex-1 border rounded px-3 py-2 text-sm"
+                />
               </div>
             </div>
 

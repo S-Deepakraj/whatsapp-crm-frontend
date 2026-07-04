@@ -11,7 +11,9 @@ const PAGE_SIZE = 20;
 const STATUS_STYLES = {
   confirmed:     { label: 'Confirmed',     className: 'bg-blue-100 text-blue-700' },
   assigned:      { label: 'Assigned',      className: 'bg-indigo-100 text-indigo-700' },
+  reached:       { label: 'Reached',       className: 'bg-cyan-100 text-cyan-700' },
   collected:     { label: 'Collected',     className: 'bg-purple-100 text-purple-700' },
+  issue:         { label: 'Issue',         className: 'bg-red-100 text-red-600' },
   report_ready:  { label: 'Report Ready',  className: 'bg-teal-100 text-teal-700' },
   closed:        { label: 'Closed',        className: 'bg-gray-100 text-gray-500' },
   cancelled:     { label: 'Cancelled',     className: 'bg-red-100 text-red-600' },
@@ -97,8 +99,13 @@ export default function OrdersPage() {
                       </span>
                       <span className="text-xs text-gray-400">{o.customer_phone}</span>
                       <span className="text-xs text-gray-400">
-                        {formatDate(o.scheduled_date)} · {capitalize(o.time_slot)}
+                        {formatDate(o.scheduled_date)} · {formatTime(o.slot_start)}–{formatTime(o.slot_end)}
                       </span>
+                      {o.technician_name && (
+                        <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">
+                          {o.technician_name}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-500">{o.collection_address}</p>
                     <p className="text-xs text-gray-600">
@@ -108,6 +115,9 @@ export default function OrdersPage() {
                         ₹{o.test_lines.reduce((s, l) => s + parseFloat(l.agreedPrice), 0).toLocaleString('en-IN')}
                       </span>
                     </p>
+                    {o.status === 'issue' && o.issue_note && (
+                      <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 inline-block">{o.issue_note}</p>
+                    )}
                   </div>
 
                   {o.status === 'confirmed' && (
@@ -156,6 +166,10 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function capitalize(s) {
-  return s ? s[0].toUpperCase() + s.slice(1) : s;
+function formatTime(timeStr) {
+  if (!timeStr) return '—';
+  const [h, m] = timeStr.split(':').map(Number);
+  const period = h < 12 ? 'AM' : 'PM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }
