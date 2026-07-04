@@ -7,6 +7,8 @@ import { fetchSettings } from '../store/settingsSlice';
 const navItems = [
   { to: '/', label: 'Dashboard' },
   { to: '/customers', label: 'Customers' },
+  { to: '/orders', label: 'Orders' },
+  { to: '/test-catalog', label: 'Test Catalog' },
   { to: '/followups', label: 'Follow-Ups' },
   { to: '/settings', label: 'Settings' },
 ];

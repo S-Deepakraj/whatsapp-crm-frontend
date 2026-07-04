@@ -12,6 +12,8 @@ import CustomerProfilePage from './pages/CustomerProfilePage';
 import CustomerFormPage from './pages/CustomerFormPage';
 import FollowupsPage from './pages/FollowupsPage';
 import SettingsPage from './pages/SettingsPage';
+import OrdersPage from './pages/OrdersPage';
+import TestCatalogPage from './pages/TestCatalogPage';
 
 function ProtectedRoute({ children }) {
   const token = useAppSelector((s) => s.auth.token);
@@ -33,6 +35,8 @@ export default function App() {
       <Route path="/customers/:id/edit" element={<ProtectedRoute><CustomerFormPage /></ProtectedRoute>} />
       <Route path="/customers/:id" element={<ProtectedRoute><CustomerProfilePage /></ProtectedRoute>} />
       <Route path="/followups" element={<ProtectedRoute><FollowupsPage /></ProtectedRoute>} />
+      <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+      <Route path="/test-catalog" element={<ProtectedRoute><TestCatalogPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     </Routes>
   );

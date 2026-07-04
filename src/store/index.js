@@ -4,13 +4,17 @@ import customerReducer from './customerSlice';
 import followupReducer from './followupSlice';
 import visitReducer    from './visitSlice';
 import settingsReducer from './settingsSlice';
+import testCatalogReducer from './testCatalogSlice';
+import orderReducer       from './orderSlice';
 
 export const store = configureStore({
   reducer: {
-    auth:      authReducer,
-    customers: customerReducer,
-    followups: followupReducer,
-    visits:    visitReducer,
-    settings:  settingsReducer,
+    auth:        authReducer,
+    customers:   customerReducer,
+    followups:   followupReducer,
+    visits:      visitReducer,
+    settings:    settingsReducer,
+    testCatalog: testCatalogReducer,
+    orders:      orderReducer,
   },
 });
