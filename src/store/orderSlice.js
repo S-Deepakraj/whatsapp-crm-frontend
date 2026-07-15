@@ -30,6 +30,24 @@ export const assignOrder = createAsyncThunk(
   }
 );
 
+export const notifyOrder = createAsyncThunk(
+  'orders/notify',
+  async ({ id, type }) => {
+    const { data } = await api.patch(`/orders/${id}/notify`, { type });
+    return data;
+  }
+);
+
+export const uploadReport = createAsyncThunk(
+  'orders/uploadReport',
+  async ({ id, file }) => {
+    const formData = new FormData();
+    formData.append('report', file);
+    const { data } = await api.post(`/orders/${id}/report`, formData);
+    return data;
+  }
+);
+
 const orderSlice = createSlice({
   name: 'orders',
   initialState: { data: [], total: 0, loading: false },
@@ -51,6 +69,14 @@ const orderSlice = createSlice({
         if (idx !== -1) state.data[idx] = action.payload;
       })
       .addCase(assignOrder.fulfilled, (state, action) => {
+        const idx = state.data.findIndex((o) => o.id === action.payload.id);
+        if (idx !== -1) state.data[idx] = action.payload;
+      })
+      .addCase(notifyOrder.fulfilled, (state, action) => {
+        const idx = state.data.findIndex((o) => o.id === action.payload.id);
+        if (idx !== -1) state.data[idx] = action.payload;
+      })
+      .addCase(uploadReport.fulfilled, (state, action) => {
         const idx = state.data.findIndex((o) => o.id === action.payload.id);
         if (idx !== -1) state.data[idx] = action.payload;
       });

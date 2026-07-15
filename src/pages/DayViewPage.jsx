@@ -37,8 +37,10 @@ export default function DayViewPage() {
   useEffect(() => { dispatch(fetchTechnicians()); }, [dispatch]);
   useEffect(() => { dispatch(fetchOrders({ scheduledDate, limit: 50 })); }, [dispatch, scheduledDate]);
 
+  // Walk-ins are collected on the spot, not by a technician, so they
+  // don't belong on this board at all.
   const activeOrders = useMemo(
-    () => orders.filter((o) => o.status !== 'cancelled'),
+    () => orders.filter((o) => o.status !== 'cancelled' && o.channel !== 'walk_in'),
     [orders]
   );
 

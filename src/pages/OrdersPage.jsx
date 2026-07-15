@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { fetchOrders, updateOrderStatus } from '../store/orderSlice';
+import { fetchOrders, updateOrderStatus, notifyOrder, uploadReport } from '../store/orderSlice';
 import OrderFormModal from '../components/OrderFormModal';
 import CallButton from '../components/CallButton';
 import Pagination from '../components/Pagination';
+import api from '../services/api';
+import { buildWhatsAppLink } from '../utils/whatsapp';
+import { buildOrderConfirmationMessage, buildOrderReminderMessage, buildOrderReportMessage } from '../utils/messageBuilder';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const PAGE_SIZE = 20;
 
@@ -26,6 +31,7 @@ function todayStr() {
 export default function OrdersPage() {
   const dispatch = useAppDispatch();
   const { data: orders, total, loading } = useAppSelector((s) => s.orders);
+  const settings = useAppSelector((s) => s.settings.data);
   const [scheduledDate, setScheduledDate] = useState(todayStr());
   const [showAllDates, setShowAllDates] = useState(false);
   const [page, setPage] = useState(1);
@@ -53,10 +59,45 @@ export default function OrdersPage() {
     }
   }
 
+  function handleSendConfirmation(o) {
+    window.open(buildWhatsAppLink(o.customer_phone, buildOrderConfirmationMessage(settings, o)), '_blank');
+    dispatch(notifyOrder({ id: o.id, type: 'confirmation' }));
+  }
+
+  function handleSendReminder(o) {
+    window.open(buildWhatsAppLink(o.customer_phone, buildOrderReminderMessage(settings, o)), '_blank');
+    dispatch(notifyOrder({ id: o.id, type: 'reminder' }));
+  }
+
+  function handleUploadReport(o, file) {
+    if (!file) return;
+    dispatch(uploadReport({ id: o.id, file }));
+  }
+
+  async function handleViewReport(o) {
+    const response = await api.get(`/orders/${o.id}/report`, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(response.data);
+    window.open(url, '_blank');
+  }
+
+  function handleSendReport(o) {
+    const reportUrl = `${API_BASE}/public/reports/${o.report_token}`;
+    window.open(buildWhatsAppLink(o.customer_phone, buildOrderReportMessage(settings, o, reportUrl)), '_blank');
+    dispatch(notifyOrder({ id: o.id, type: 'report' }));
+  }
+
+  function handleClose(id) {
+    dispatch(updateOrderStatus({ id, status: 'closed' }));
+  }
+
+  function handleMarkCollected(id) {
+    dispatch(updateOrderStatus({ id, status: 'collected' }));
+  }
+
   return (
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold">Home Collection Orders</h1>
+        <h1 className="text-2xl font-bold">Orders</h1>
         <button
           onClick={() => setShowModal(true)}
           className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm font-medium"
@@ -97,17 +138,24 @@ export default function OrdersPage() {
                       <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_STYLES[o.status]?.className ?? 'bg-gray-100 text-gray-600'}`}>
                         {STATUS_STYLES[o.status]?.label ?? o.status}
                       </span>
+                      {o.channel === 'walk_in' && (
+                        <span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">
+                          Walk-in
+                        </span>
+                      )}
                       <span className="text-xs text-gray-400">{o.customer_phone}</span>
-                      <span className="text-xs text-gray-400">
-                        {formatDate(o.scheduled_date)} · {formatTime(o.slot_start)}–{formatTime(o.slot_end)}
-                      </span>
+                      {o.channel !== 'walk_in' && (
+                        <span className="text-xs text-gray-400">
+                          {formatDate(o.scheduled_date)} · {formatTime(o.slot_start)}–{formatTime(o.slot_end)}
+                        </span>
+                      )}
                       {o.technician_name && (
                         <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">
                           {o.technician_name}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">{o.collection_address}</p>
+                    {o.channel !== 'walk_in' && <p className="text-xs text-gray-500">{o.collection_address}</p>}
                     <p className="text-xs text-gray-600">
                       {o.test_lines.map((l) => l.testName).join(', ')}
                       {' — '}
@@ -120,7 +168,7 @@ export default function OrdersPage() {
                     )}
                   </div>
 
-                  {o.status === 'confirmed' && (
+                  {o.status !== 'cancelled' && (
                     <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
                       <CallButton
                         phone={o.customer_phone}
@@ -128,12 +176,86 @@ export default function OrdersPage() {
                       >
                         Call
                       </CallButton>
-                      <button
-                        onClick={() => handleCancel(o.id)}
-                        className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5"
-                      >
-                        Cancel
-                      </button>
+                      {o.channel !== 'walk_in' && (
+                        o.confirmation_sent_at ? (
+                          <span className="text-xs text-green-600">✓ Confirmed sent</span>
+                        ) : (
+                          <button
+                            onClick={() => handleSendConfirmation(o)}
+                            className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium"
+                          >
+                            Send Confirmation
+                          </button>
+                        )
+                      )}
+                      {o.channel !== 'walk_in' && o.scheduled_date?.slice(0, 10) === todayStr() && (
+                        o.reminder_sent_at ? (
+                          <span className="text-xs text-green-600">✓ Reminder sent</span>
+                        ) : (
+                          <button
+                            onClick={() => handleSendReminder(o)}
+                            className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium"
+                          >
+                            Send Reminder
+                          </button>
+                        )
+                      )}
+                      {o.channel === 'walk_in' && o.status === 'confirmed' && (
+                        <button
+                          onClick={() => handleMarkCollected(o.id)}
+                          className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded hover:bg-purple-200 font-medium"
+                        >
+                          Mark Collected
+                        </button>
+                      )}
+                      {['collected', 'report_ready', 'closed'].includes(o.status) && (
+                        o.has_report ? (
+                          <>
+                            <button
+                              onClick={() => handleViewReport(o)}
+                              className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 font-medium"
+                            >
+                              View Report
+                            </button>
+                            {o.report_sent_at ? (
+                              <span className="text-xs text-green-600">✓ Report sent</span>
+                            ) : (
+                              <button
+                                onClick={() => handleSendReport(o)}
+                                className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium"
+                              >
+                                Send Report
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <label className="text-xs bg-teal-100 text-teal-700 px-3 py-1.5 rounded hover:bg-teal-200 font-medium cursor-pointer">
+                            Upload Report
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              className="hidden"
+                              onChange={(e) => handleUploadReport(o, e.target.files[0])}
+                            />
+                          </label>
+                        )
+                      )}
+                      {o.status === 'report_ready' && (
+                        <button
+                          onClick={() => handleClose(o.id)}
+                          className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 font-medium"
+                        >
+                          Close
+                        </button>
+                      )}
+                      {o.status === 'confirmed' && (
+                        <button
+                          onClick={() => handleCancel(o.id)}
+                          className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
