@@ -108,6 +108,27 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+        <div className="rounded-xl p-5 bg-green-50">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-2xl">💰</span>
+          </div>
+          <p className="text-4xl font-bold text-green-700">
+            {stats ? `₹${Number(stats.todayVisitsRevenue).toLocaleString('en-IN')}` : '—'}
+          </p>
+          <p className="text-sm text-gray-600 mt-1">Total Amount Collected Today</p>
+        </div>
+        <div className="rounded-xl p-5 bg-amber-50">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-2xl">🧪</span>
+          </div>
+          <p className="text-4xl font-bold text-amber-700">
+            {stats ? `₹${Number(stats.todayCostB2B).toLocaleString('en-IN')}` : '—'}
+          </p>
+          <p className="text-sm text-gray-600 mt-1">Total Cost (B2B) Today</p>
+        </div>
+      </div>
+
       <div className="mt-8">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-800">Today's Follow-Ups</h2>

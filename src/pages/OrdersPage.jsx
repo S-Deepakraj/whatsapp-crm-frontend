@@ -28,6 +28,18 @@ function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
 
+function shiftDateStr(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+const QUICK_RANGES = [
+  { label: 'Yesterday', days: -1 },
+  { label: 'Today',     days: 0 },
+  { label: 'Tomorrow',  days: 1 },
+];
+
 export default function OrdersPage() {
   const dispatch = useAppDispatch();
   const { data: orders, total, loading } = useAppSelector((s) => s.orders);
@@ -36,6 +48,7 @@ export default function OrdersPage() {
   const [showAllDates, setShowAllDates] = useState(false);
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const pageParams = { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
@@ -107,6 +120,22 @@ export default function OrdersPage() {
       </div>
 
       <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <div className="flex gap-1">
+          {QUICK_RANGES.map((r) => {
+            const rangeDate = shiftDateStr(r.days);
+            const active = !showAllDates && scheduledDate === rangeDate;
+            return (
+              <button
+                key={r.label}
+                type="button"
+                onClick={() => { setScheduledDate(rangeDate); setShowAllDates(false); }}
+                className={`text-sm px-3 py-1.5 rounded border ${active ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                {r.label}
+              </button>
+            );
+          })}
+        </div>
         <input
           type="date"
           value={scheduledDate}
@@ -144,11 +173,11 @@ export default function OrdersPage() {
                         </span>
                       )}
                       <span className="text-xs text-gray-400">{o.customer_phone}</span>
-                      {o.channel !== 'walk_in' && (
-                        <span className="text-xs text-gray-400">
-                          {formatDate(o.scheduled_date)} · {formatTime(o.slot_start)}–{formatTime(o.slot_end)}
-                        </span>
-                      )}
+                      <span className="text-xs text-gray-400">
+                        {o.channel === 'walk_in'
+                          ? formatDate(o.scheduled_date)
+                          : `${formatDate(o.scheduled_date)} · ${formatTime(o.slot_start)}–${formatTime(o.slot_end)}`}
+                      </span>
                       {o.technician_name && (
                         <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">
                           {o.technician_name}
@@ -176,31 +205,41 @@ export default function OrdersPage() {
                       >
                         Call
                       </CallButton>
+                      {['confirmed', 'assigned'].includes(o.status) && (
+                        <button
+                          onClick={() => setEditingOrder(o)}
+                          className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 font-medium"
+                        >
+                          Edit
+                        </button>
+                      )}
                       {o.channel !== 'walk_in' && (
-                        o.confirmation_sent_at ? (
-                          <span className="text-xs text-green-600">✓ Confirmed sent</span>
-                        ) : (
+                        <>
+                          {o.confirmation_sent_at && (
+                            <span className="text-xs text-green-600">✓ Confirmed sent</span>
+                          )}
                           <button
                             onClick={() => handleSendConfirmation(o)}
                             className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium"
                           >
-                            Send Confirmation
+                            {o.confirmation_sent_at ? 'Resend Confirmation' : 'Send Confirmation'}
                           </button>
-                        )
+                        </>
                       )}
                       {o.channel !== 'walk_in' && o.scheduled_date?.slice(0, 10) === todayStr() && (
-                        o.reminder_sent_at ? (
-                          <span className="text-xs text-green-600">✓ Reminder sent</span>
-                        ) : (
+                        <>
+                          {o.reminder_sent_at && (
+                            <span className="text-xs text-green-600">✓ Reminder sent</span>
+                          )}
                           <button
                             onClick={() => handleSendReminder(o)}
                             className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium"
                           >
-                            Send Reminder
+                            {o.reminder_sent_at ? 'Resend Reminder' : 'Send Reminder'}
                           </button>
-                        )
+                        </>
                       )}
-                      {o.channel === 'walk_in' && o.status === 'confirmed' && (
+                      {['confirmed', 'assigned', 'reached', 'issue'].includes(o.status) && (
                         <button
                           onClick={() => handleMarkCollected(o.id)}
                           className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded hover:bg-purple-200 font-medium"
@@ -276,6 +315,14 @@ export default function OrdersPage() {
       {showModal && (
         <OrderFormModal
           onClose={() => setShowModal(false)}
+          onCreated={refetch}
+        />
+      )}
+
+      {editingOrder && (
+        <OrderFormModal
+          order={editingOrder}
+          onClose={() => setEditingOrder(null)}
           onCreated={refetch}
         />
       )}

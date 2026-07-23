@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { createOrder } from '../store/orderSlice';
+import { createOrder, updateOrder } from '../store/orderSlice';
 import { createCustomer } from '../store/customerSlice';
 import { fetchTests } from '../store/testCatalogSlice';
 import { useDebounce } from '../hooks/useDebounce';
@@ -26,9 +26,10 @@ function today() {
   return new Date().toISOString().split('T')[0];
 }
 
-export default function OrderFormModal({ onClose, onCreated }) {
+export default function OrderFormModal({ order, onClose, onCreated }) {
   const dispatch = useAppDispatch();
   const tests = useAppSelector((s) => s.testCatalog.data);
+  const isEdit = !!order;
 
   const [phoneQuery, setPhoneQuery] = useState('');
   const debouncedPhone = useDebounce(phoneQuery, 300);
@@ -36,15 +37,19 @@ export default function OrderFormModal({ onClose, onCreated }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [newCustomerName, setNewCustomerName] = useState('');
 
-  const [channel, setChannel] = useState('home_collection');
+  const [channel, setChannel] = useState(order?.channel || 'home_collection');
   const isWalkIn = channel === 'walk_in';
 
-  const [collectionAddress, setCollectionAddress] = useState('');
-  const [scheduledDate, setScheduledDate] = useState(tomorrow());
-  const [slotStart, setSlotStart] = useState(SLOT_PRESETS[0].start);
-  const [slotEnd, setSlotEnd] = useState(SLOT_PRESETS[0].end);
-  const [notes, setNotes] = useState('');
-  const [lines, setLines] = useState([{ ...EMPTY_LINE }]);
+  const [collectionAddress, setCollectionAddress] = useState(order?.collection_address || '');
+  const [scheduledDate, setScheduledDate] = useState(order?.scheduled_date?.slice(0, 10) || tomorrow());
+  const [slotStart, setSlotStart] = useState(order?.slot_start || SLOT_PRESETS[0].start);
+  const [slotEnd, setSlotEnd] = useState(order?.slot_end || SLOT_PRESETS[0].end);
+  const [notes, setNotes] = useState(order?.notes || '');
+  const [lines, setLines] = useState(
+    order?.test_lines?.length
+      ? order.test_lines.map((l) => ({ testCatalogId: l.testCatalogId, testLabel: l.testName, query: '', agreedPrice: String(l.agreedPrice) }))
+      : [{ ...EMPTY_LINE }]
+  );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -114,7 +119,7 @@ function updateLine(i, field, value) {
     e.preventDefault();
     setError(null);
 
-    if (!selectedCustomer && !(phoneQuery.trim() && newCustomerName.trim())) {
+    if (!isEdit && !selectedCustomer && !(phoneQuery.trim() && newCustomerName.trim())) {
       setError('Select an existing customer or enter a name and phone for a new one.');
       return;
     }
@@ -133,6 +138,33 @@ function updateLine(i, field, value) {
 
     setLoading(true);
     try {
+      const testLines = lines.map((l) => ({
+        testCatalogId: Number(l.testCatalogId),
+        agreedPrice: parseFloat(l.agreedPrice),
+      }));
+
+      if (isEdit) {
+        const result = await dispatch(updateOrder({
+          id: order.id,
+          scheduledDate,
+          notes: notes || null,
+          testLines,
+          ...(isWalkIn ? {} : {
+            collectionAddress: collectionAddress.trim(),
+            slotStart,
+            slotEnd,
+          }),
+        }));
+
+        if (updateOrder.fulfilled.match(result)) {
+          onCreated?.();
+          onClose();
+        } else {
+          setError(result.error?.message || 'Failed to update order.');
+        }
+        return;
+      }
+
       let customerId = selectedCustomer?.id;
       if (!customerId) {
         const result = await dispatch(createCustomer({ name: newCustomerName.trim(), phone: phoneQuery.trim() }));
@@ -147,12 +179,9 @@ function updateLine(i, field, value) {
       const result = await dispatch(createOrder({
         customerId,
         channel,
-        scheduledDate: isWalkIn ? today() : scheduledDate,
+        scheduledDate,
         notes: notes || null,
-        testLines: lines.map((l) => ({
-          testCatalogId: Number(l.testCatalogId),
-          agreedPrice: parseFloat(l.agreedPrice),
-        })),
+        testLines,
         ...(isWalkIn ? {} : {
           collectionAddress: collectionAddress.trim(),
           slotStart,
@@ -175,7 +204,9 @@ function updateLine(i, field, value) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="px-6 py-4 border-b flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{isWalkIn ? 'New Walk-in Order' : 'New Home Collection Order'}</h2>
+          <h2 className="text-lg font-semibold">
+            {isEdit ? 'Edit Order' : isWalkIn ? 'New Walk-in Order' : 'New Home Collection Order'}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
         </div>
 
@@ -184,27 +215,37 @@ function updateLine(i, field, value) {
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
             {/* Channel */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Order type</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setChannel('home_collection')}
-                  className={`flex-1 text-sm px-3 py-2 rounded border ${!isWalkIn ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600'}`}
-                >
-                  Home Collection
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChannel('walk_in')}
-                  className={`flex-1 text-sm px-3 py-2 rounded border ${isWalkIn ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600'}`}
-                >
-                  Walk-in
-                </button>
+            {!isEdit && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Order type</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setChannel('home_collection'); setScheduledDate((d) => (d === today() ? tomorrow() : d)); }}
+                    className={`flex-1 text-sm px-3 py-2 rounded border ${!isWalkIn ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600'}`}
+                  >
+                    Home Collection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setChannel('walk_in'); setScheduledDate((d) => (d === tomorrow() ? today() : d)); }}
+                    className={`flex-1 text-sm px-3 py-2 rounded border ${isWalkIn ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600'}`}
+                  >
+                    Walk-in
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Customer */}
+            {isEdit ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                <div className="border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600">
+                  {order.customer_name} — {order.customer_phone}
+                </div>
+              </div>
+            ) : (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Customer phone</label>
               {selectedCustomer ? (
@@ -251,67 +292,69 @@ function updateLine(i, field, value) {
                 </>
               )}
             </div>
+            )}
 
             {!isWalkIn && (
-              <>
-                {/* Address */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Collection address</label>
-                  <textarea
-                    rows={2}
-                    value={collectionAddress}
-                    onChange={(e) => setCollectionAddress(e.target.value)}
-                    placeholder="House/flat, street, landmark…"
-                    className="w-full border rounded px-3 py-2 text-sm"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Collection address</label>
+                <textarea
+                  rows={2}
+                  value={collectionAddress}
+                  onChange={(e) => setCollectionAddress(e.target.value)}
+                  placeholder="House/flat, street, landmark…"
+                  className="w-full border rounded px-3 py-2 text-sm"
+                />
+              </div>
+            )}
 
-                {/* Date / slot */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+            {/* Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {isWalkIn ? 'Collection date' : 'Date'}
+              </label>
+              <input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm"
+              />
+            </div>
+
+            {!isWalkIn && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-gray-700">Collection window</label>
+                  <div className="flex gap-1">
+                    {SLOT_PRESETS.map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => { setSlotStart(p.start); setSlotEnd(p.end); }}
+                        className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200"
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-3 items-center">
                   <input
-                    type="date"
-                    value={scheduledDate}
-                    onChange={(e) => setScheduledDate(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm"
+                    type="time"
+                    step="900"
+                    value={slotStart}
+                    onChange={(e) => setSlotStart(e.target.value)}
+                    className="flex-1 border rounded px-3 py-2 text-sm"
+                  />
+                  <span className="text-gray-400 text-sm">to</span>
+                  <input
+                    type="time"
+                    step="900"
+                    value={slotEnd}
+                    onChange={(e) => setSlotEnd(e.target.value)}
+                    className="flex-1 border rounded px-3 py-2 text-sm"
                   />
                 </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-sm font-medium text-gray-700">Collection window</label>
-                    <div className="flex gap-1">
-                      {SLOT_PRESETS.map((p) => (
-                        <button
-                          key={p.label}
-                          type="button"
-                          onClick={() => { setSlotStart(p.start); setSlotEnd(p.end); }}
-                          className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200"
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex gap-3 items-center">
-                    <input
-                      type="time"
-                      step="900"
-                      value={slotStart}
-                      onChange={(e) => setSlotStart(e.target.value)}
-                      className="flex-1 border rounded px-3 py-2 text-sm"
-                    />
-                    <span className="text-gray-400 text-sm">to</span>
-                    <input
-                      type="time"
-                      step="900"
-                      value={slotEnd}
-                      onChange={(e) => setSlotEnd(e.target.value)}
-                      className="flex-1 border rounded px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-              </>
+              </div>
             )}
 
             {/* Tests */}
@@ -403,7 +446,7 @@ function updateLine(i, field, value) {
               disabled={loading}
               className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
             >
-              {loading ? 'Saving…' : isWalkIn ? 'Register Walk-in' : 'Confirm Order'}
+              {loading ? 'Saving…' : isEdit ? 'Save Changes' : isWalkIn ? 'Register Walk-in' : 'Confirm Order'}
             </button>
             <button type="button" onClick={onClose} className="flex-1 border py-2 rounded hover:bg-gray-50 text-sm">
               Cancel

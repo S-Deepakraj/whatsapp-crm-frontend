@@ -1,17 +1,23 @@
-import { useState } from 'react';
-import { useAppDispatch } from '../hooks/redux';
+import { useEffect, useState } from 'react';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { createVisit } from '../store/visitSlice';
+import { fetchTests } from '../store/testCatalogSlice';
 
-const EMPTY_ITEM = { serviceName: '', amount: '' };
+const EMPTY_ITEM = { testCatalogId: '', serviceName: '', query: '', amount: '' };
+
+const CATEGORY_LABEL = { test: 'Test', profile: 'Profile', package: 'Package', outlab: 'Outlab' };
 
 export default function VisitFormModal({ customerId, onClose, onCreated }) {
   const dispatch = useAppDispatch();
+  const tests = useAppSelector((s) => s.testCatalog.data);
 
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes]         = useState('');
   const [items, setItems]         = useState([{ ...EMPTY_ITEM }]);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
+
+  useEffect(() => { dispatch(fetchTests()); }, [dispatch]);
 
   function addItem() {
     setItems((prev) => [...prev, { ...EMPTY_ITEM }]);
@@ -25,12 +31,37 @@ export default function VisitFormModal({ customerId, onClose, onCreated }) {
     setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
   }
 
+  function pickTest(i, test) {
+    setItems((prev) => prev.map((item, idx) => {
+      if (idx !== i) return item;
+      return {
+        ...item,
+        testCatalogId: test.id,
+        serviceName: test.name,
+        query: '',
+        amount: item.amount || (test.mrp != null ? String(test.mrp) : ''),
+      };
+    }));
+  }
+
+  function clearItemTest(i) {
+    setItems((prev) => prev.map((item, idx) => (idx === i ? { ...item, testCatalogId: '', serviceName: '', query: '' } : item)));
+  }
+
+  function matchesFor(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return tests
+      .filter((t) => t.active && (t.name.toLowerCase().includes(q) || t.test_code?.toLowerCase().includes(q)))
+      .slice(0, 8);
+  }
+
   const total = items.reduce((sum, it) => sum + (parseFloat(it.amount) || 0), 0);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (items.some((it) => !it.serviceName.trim() || !it.amount)) {
-      setError('Fill in all service names and amounts.');
+      setError('Pick a service and enter an amount for every line.');
       return;
     }
     setLoading(true);
@@ -90,35 +121,68 @@ export default function VisitFormModal({ customerId, onClose, onCreated }) {
                 </button>
               </div>
               <div className="space-y-2">
-                {items.map((item, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Service name"
-                      value={item.serviceName}
-                      onChange={(e) => updateItem(i, 'serviceName', e.target.value)}
-                      className="flex-1 border rounded px-3 py-2 text-sm"
-                    />
-                    <input
-                      type="number"
-                      placeholder="₹"
-                      min="0"
-                      step="0.01"
-                      value={item.amount}
-                      onChange={(e) => updateItem(i, 'amount', e.target.value)}
-                      className="w-24 border rounded px-3 py-2 text-sm"
-                    />
-                    {items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItem(i)}
-                        className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                ))}
+                {items.map((item, i) => {
+                  const suggestions = item.testCatalogId ? [] : matchesFor(item.query);
+                  return (
+                    <div key={i} className="flex gap-2">
+                      <div className="flex-1 relative">
+                        {item.testCatalogId ? (
+                          <div className="flex items-center justify-between border rounded px-3 py-2 text-sm bg-gray-50">
+                            <span>{item.serviceName}</span>
+                            <button type="button" onClick={() => clearItemTest(i)} className="text-xs text-gray-400 hover:text-red-500">Change</button>
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={item.query}
+                            onChange={(e) => updateItem(i, 'query', e.target.value)}
+                            placeholder="Search test name or code…"
+                            className="w-full border rounded px-3 py-2 text-sm"
+                          />
+                        )}
+                        {suggestions.length > 0 && (
+                          <ul className="absolute z-10 left-0 right-0 bg-white border rounded mt-1 divide-y text-sm shadow-lg max-h-56 overflow-y-auto">
+                            {suggestions.map((t) => (
+                              <li key={t.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => pickTest(i, t)}
+                                  className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center justify-between gap-2"
+                                >
+                                  <span>
+                                    {t.name}
+                                    {t.test_code ? <span className="text-gray-400"> · {t.test_code}</span> : null}
+                                  </span>
+                                  <span className="text-xs text-gray-400 shrink-0">
+                                    {CATEGORY_LABEL[t.category] ?? t.category}{t.mrp != null ? ` · MRP ₹${t.mrp}` : ''}
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="₹"
+                        min="0"
+                        step="0.01"
+                        value={item.amount}
+                        onChange={(e) => updateItem(i, 'amount', e.target.value)}
+                        className="w-24 border rounded px-3 py-2 text-sm"
+                      />
+                      {items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeItem(i)}
+                          className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               {total > 0 && (
                 <p className="text-right text-sm font-semibold text-green-700 mt-2">
