@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchTechnicians, createTechnician, updateTechnician } from '../store/technicianSlice';
+import { Button } from '../components/ui/button';
 
 const EMPTY_FORM = { name: '', phone: '' };
 
@@ -61,7 +62,7 @@ export default function TechniciansPage() {
             className="w-full border rounded px-3 py-2 text-sm"
           />
         </div>
-        <div className="w-48">
+        <div className="w-full sm:w-48">
           <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
           <input
             type="text"
@@ -71,13 +72,9 @@ export default function TechniciansPage() {
             className="w-full border rounded px-3 py-2 text-sm"
           />
         </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
-        >
+        <Button type="submit" disabled={saving}>
           {saving ? 'Adding…' : '+ Add Technician'}
-        </button>
+        </Button>
       </form>
       {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
@@ -117,8 +114,8 @@ export default function TechniciansPage() {
                       </td>
                       <td className="px-4 py-2 text-gray-400">{t.active ? 'Active' : 'Inactive'}</td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
-                        <button onClick={() => saveEdit(t.id)} className="text-green-600 hover:underline mr-3">Save</button>
-                        <button onClick={() => setEditingId(null)} className="text-gray-400 hover:underline">Cancel</button>
+                        <Button variant="link" size="xs" onClick={() => saveEdit(t.id)} className="text-green-600 mr-1">Save</Button>
+                        <Button variant="link" size="xs" onClick={() => setEditingId(null)} className="text-gray-400">Cancel</Button>
                       </td>
                     </>
                   ) : (
@@ -131,10 +128,10 @@ export default function TechniciansPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
-                        <button onClick={() => startEdit(t)} className="text-gray-500 hover:underline mr-3">Edit</button>
-                        <button onClick={() => toggleActive(t)} className="text-gray-500 hover:underline">
+                        <Button variant="link" size="xs" onClick={() => startEdit(t)} className="text-gray-500 mr-1">Edit</Button>
+                        <Button variant="link" size="xs" onClick={() => toggleActive(t)} className="text-gray-500">
                           {t.active ? 'Deactivate' : 'Activate'}
-                        </button>
+                        </Button>
                       </td>
                     </>
                   )}

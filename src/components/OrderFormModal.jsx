@@ -5,6 +5,7 @@ import { createCustomer } from '../store/customerSlice';
 import { fetchTests } from '../store/testCatalogSlice';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
+import { Button } from './ui/button';
 
 const SLOT_PRESETS = [
   { label: 'Morning',   start: '06:30', end: '06:45' },
@@ -207,7 +208,7 @@ function updateLine(i, field, value) {
           <h2 className="text-lg font-semibold">
             {isEdit ? 'Edit Order' : isWalkIn ? 'New Walk-in Order' : 'New Home Collection Order'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <Button type="button" variant="ghost" size="icon-sm" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</Button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
@@ -219,20 +220,22 @@ function updateLine(i, field, value) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Order type</label>
                 <div className="flex gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant={!isWalkIn ? 'default' : 'outline'}
                     onClick={() => { setChannel('home_collection'); setScheduledDate((d) => (d === today() ? tomorrow() : d)); }}
-                    className={`flex-1 text-sm px-3 py-2 rounded border ${!isWalkIn ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600'}`}
+                    className="flex-1"
                   >
                     Home Collection
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant={isWalkIn ? 'default' : 'outline'}
                     onClick={() => { setChannel('walk_in'); setScheduledDate((d) => (d === tomorrow() ? today() : d)); }}
-                    className={`flex-1 text-sm px-3 py-2 rounded border ${isWalkIn ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600'}`}
+                    className="flex-1"
                   >
                     Walk-in
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -251,7 +254,7 @@ function updateLine(i, field, value) {
               {selectedCustomer ? (
                 <div className="flex items-center justify-between border rounded px-3 py-2 text-sm bg-gray-50">
                   <span>{selectedCustomer.name} — {selectedCustomer.phone}</span>
-                  <button type="button" onClick={clearCustomer} className="text-xs text-gray-400 hover:text-red-500">Change</button>
+                  <Button type="button" variant="link" size="xs" onClick={clearCustomer} className="text-gray-400 hover:text-red-500">Change</Button>
                 </div>
               ) : (
                 <>
@@ -266,13 +269,14 @@ function updateLine(i, field, value) {
                     <ul className="border rounded mt-1 divide-y text-sm">
                       {matches.map((c) => (
                         <li key={c.id}>
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
                             onClick={() => pickCustomer(c)}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                            className="w-full justify-start rounded-none h-auto px-3 py-2 font-normal"
                           >
                             {c.name} — {c.phone}
-                          </button>
+                          </Button>
                         </li>
                       ))}
                     </ul>
@@ -326,14 +330,15 @@ function updateLine(i, field, value) {
                   <label className="text-sm font-medium text-gray-700">Collection window</label>
                   <div className="flex gap-1">
                     {SLOT_PRESETS.map((p) => (
-                      <button
+                      <Button
                         key={p.label}
                         type="button"
+                        variant="secondary"
+                        size="xs"
                         onClick={() => { setSlotStart(p.start); setSlotEnd(p.end); }}
-                        className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200"
                       >
                         {p.label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -361,9 +366,9 @@ function updateLine(i, field, value) {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-medium text-gray-700">Tests</label>
-                <button type="button" onClick={addLine} className="text-xs text-green-600 hover:text-green-700 font-medium">
+                <Button type="button" variant="link" size="xs" onClick={addLine} className="text-green-600 hover:text-green-700">
                   + Add test
-                </button>
+                </Button>
               </div>
               <div className="space-y-2">
                 {lines.map((line, i) => {
@@ -375,7 +380,7 @@ function updateLine(i, field, value) {
                           {line.testCatalogId ? (
                             <div className="flex items-center justify-between border rounded px-3 py-2 text-sm bg-gray-50">
                               <span>{line.testLabel}</span>
-                              <button type="button" onClick={() => clearLineTest(i)} className="text-xs text-gray-400 hover:text-red-500">Change</button>
+                              <Button type="button" variant="link" size="xs" onClick={() => clearLineTest(i)} className="text-gray-400 hover:text-red-500">Change</Button>
                             </div>
                           ) : (
                             <input
@@ -390,10 +395,11 @@ function updateLine(i, field, value) {
                             <ul className="absolute z-10 left-0 right-0 bg-white border rounded mt-1 divide-y text-sm shadow-lg max-h-56 overflow-y-auto">
                               {suggestions.map((t) => (
                                 <li key={t.id}>
-                                  <button
+                                  <Button
                                     type="button"
+                                    variant="ghost"
                                     onClick={() => pickTest(i, t)}
-                                    className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center justify-between gap-2"
+                                    className="w-full h-auto justify-between rounded-none px-3 py-2 font-normal"
                                   >
                                     <span>
                                       {t.name}
@@ -402,7 +408,7 @@ function updateLine(i, field, value) {
                                     <span className="text-xs text-gray-400 shrink-0">
                                       {CATEGORY_LABEL[t.category] ?? t.category}{t.mrp != null ? ` · MRP ₹${t.mrp}` : ''}
                                     </span>
-                                  </button>
+                                  </Button>
                                 </li>
                               ))}
                             </ul>
@@ -416,7 +422,7 @@ function updateLine(i, field, value) {
                           className="w-28 border rounded px-3 py-2 text-sm"
                         />
                         {lines.length > 1 && (
-                          <button type="button" onClick={() => removeLine(i)} className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none">×</button>
+                          <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeLine(i)} className="text-gray-400 hover:text-red-500 text-lg leading-none">×</Button>
                         )}
                       </div>
                     </div>
@@ -441,16 +447,12 @@ function updateLine(i, field, value) {
           </div>
 
           <div className="px-6 py-4 border-t flex gap-3">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
-            >
+            <Button type="submit" disabled={loading} className="flex-1">
               {loading ? 'Saving…' : isEdit ? 'Save Changes' : isWalkIn ? 'Register Walk-in' : 'Confirm Order'}
-            </button>
-            <button type="button" onClick={onClose} className="flex-1 border py-2 rounded hover:bg-gray-50 text-sm">
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </div>

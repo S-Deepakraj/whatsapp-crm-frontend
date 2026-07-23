@@ -8,6 +8,7 @@ import Pagination from '../components/Pagination';
 import api from '../services/api';
 import { buildWhatsAppLink } from '../utils/whatsapp';
 import { buildOrderConfirmationMessage, buildOrderReminderMessage, buildOrderReportMessage } from '../utils/messageBuilder';
+import { Button } from '../components/ui/button';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -111,12 +112,9 @@ export default function OrdersPage() {
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">Orders</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm font-medium"
-        >
+        <Button onClick={() => setShowModal(true)}>
           + New Order
-        </button>
+        </Button>
       </div>
 
       <div className="flex items-center gap-3 mb-5 flex-wrap">
@@ -125,14 +123,15 @@ export default function OrdersPage() {
             const rangeDate = shiftDateStr(r.days);
             const active = !showAllDates && scheduledDate === rangeDate;
             return (
-              <button
+              <Button
                 key={r.label}
                 type="button"
+                variant={active ? 'default' : 'outline'}
+                size="sm"
                 onClick={() => { setScheduledDate(rangeDate); setShowAllDates(false); }}
-                className={`text-sm px-3 py-1.5 rounded border ${active ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
                 {r.label}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -201,29 +200,31 @@ export default function OrdersPage() {
                     <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
                       <CallButton
                         phone={o.customer_phone}
-                        className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 font-medium"
+                        className="bg-gray-100 text-gray-600 hover:bg-gray-200"
                       >
                         Call
                       </CallButton>
                       {['confirmed', 'assigned'].includes(o.status) && (
-                        <button
+                        <Button
+                          size="sm"
+                          variant="secondary"
                           onClick={() => setEditingOrder(o)}
-                          className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 font-medium"
                         >
                           Edit
-                        </button>
+                        </Button>
                       )}
                       {o.channel !== 'walk_in' && (
                         <>
                           {o.confirmation_sent_at && (
                             <span className="text-xs text-green-600">✓ Confirmed sent</span>
                           )}
-                          <button
+                          <Button
+                            size="sm"
                             onClick={() => handleSendConfirmation(o)}
-                            className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium"
+                            className="bg-blue-100 text-blue-700 hover:bg-blue-200"
                           >
                             {o.confirmation_sent_at ? 'Resend Confirmation' : 'Send Confirmation'}
-                          </button>
+                          </Button>
                         </>
                       )}
                       {o.channel !== 'walk_in' && o.scheduled_date?.slice(0, 10) === todayStr() && (
@@ -231,69 +232,74 @@ export default function OrdersPage() {
                           {o.reminder_sent_at && (
                             <span className="text-xs text-green-600">✓ Reminder sent</span>
                           )}
-                          <button
+                          <Button
+                            size="sm"
                             onClick={() => handleSendReminder(o)}
-                            className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium"
+                            className="bg-blue-100 text-blue-700 hover:bg-blue-200"
                           >
                             {o.reminder_sent_at ? 'Resend Reminder' : 'Send Reminder'}
-                          </button>
+                          </Button>
                         </>
                       )}
                       {['confirmed', 'assigned', 'reached', 'issue'].includes(o.status) && (
-                        <button
+                        <Button
+                          size="sm"
                           onClick={() => handleMarkCollected(o.id)}
-                          className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded hover:bg-purple-200 font-medium"
+                          className="bg-purple-100 text-purple-700 hover:bg-purple-200"
                         >
                           Mark Collected
-                        </button>
+                        </Button>
                       )}
                       {['collected', 'report_ready', 'closed'].includes(o.status) && (
                         o.has_report ? (
                           <>
-                            <button
+                            <Button
+                              size="sm"
+                              variant="secondary"
                               onClick={() => handleViewReport(o)}
-                              className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 font-medium"
                             >
                               View Report
-                            </button>
+                            </Button>
                             {o.report_sent_at ? (
                               <span className="text-xs text-green-600">✓ Report sent</span>
                             ) : (
-                              <button
+                              <Button
+                                size="sm"
                                 onClick={() => handleSendReport(o)}
-                                className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium"
+                                className="bg-blue-100 text-blue-700 hover:bg-blue-200"
                               >
                                 Send Report
-                              </button>
+                              </Button>
                             )}
                           </>
                         ) : (
-                          <label className="text-xs bg-teal-100 text-teal-700 px-3 py-1.5 rounded hover:bg-teal-200 font-medium cursor-pointer">
-                            Upload Report
-                            <input
-                              type="file"
-                              accept=".pdf,.jpg,.jpeg,.png"
-                              className="hidden"
-                              onChange={(e) => handleUploadReport(o, e.target.files[0])}
-                            />
-                          </label>
+                          <Button asChild size="sm" className="bg-teal-100 text-teal-700 hover:bg-teal-200 cursor-pointer">
+                            <label>
+                              Upload Report
+                              <input
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                className="hidden"
+                                onChange={(e) => handleUploadReport(o, e.target.files[0])}
+                              />
+                            </label>
+                          </Button>
                         )
                       )}
                       {o.status === 'report_ready' && (
-                        <button
-                          onClick={() => handleClose(o.id)}
-                          className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 font-medium"
-                        >
+                        <Button size="sm" variant="secondary" onClick={() => handleClose(o.id)}>
                           Close
-                        </button>
+                        </Button>
                       )}
                       {o.status === 'confirmed' && (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleCancel(o.id)}
-                          className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5"
+                          className="text-red-400 hover:text-red-600"
                         >
                           Cancel
-                        </button>
+                        </Button>
                       )}
                     </div>
                   )}

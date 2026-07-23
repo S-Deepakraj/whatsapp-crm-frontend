@@ -7,6 +7,7 @@ import WhatsAppButton from '../components/WhatsAppButton';
 import CallButton from '../components/CallButton';
 import { buildFollowupMessage } from '../utils/messageBuilder';
 import Pagination from '../components/Pagination';
+import { Button } from '../components/ui/button';
 
 const TABS = [
   { key: 'today',     label: 'Today' },
@@ -63,25 +64,22 @@ export default function FollowupsPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">Follow-Ups</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
-        >
+        <Button onClick={() => setShowModal(true)}>
           + Add Follow-Up
-        </button>
+        </Button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-lg w-fit max-w-full overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
               tab === t.key ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -137,61 +135,61 @@ export default function FollowupsPage() {
                     >
                       WhatsApp
                     </WhatsAppButton>
-                    <button
+                    <Button
+                      size="sm"
                       onClick={() => dispatch(completeFollowup(f.id))}
-                      className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded hover:bg-green-200 font-medium"
+                      className="bg-green-100 text-green-700 hover:bg-green-200"
                     >
                       Complete
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={() => startReschedule(f)}
-                      className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 font-medium"
                     >
                       Reschedule
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => handleDelete(f.id)}
-                      className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5"
+                      className="text-red-400 hover:text-red-600"
                     >
                       ✕
-                    </button>
+                    </Button>
                   </div>
                 )}
 
                 {f.status === 'completed' && (
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-green-600 font-medium">✓ Done</span>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => handleDelete(f.id)}
-                      className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5"
+                      className="text-red-400 hover:text-red-600"
                     >
                       ✕
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
 
               {/* Inline reschedule */}
               {reschedulingId === f.id && (
-                <div className="mt-3 flex items-center gap-2 pt-3 border-t">
+                <div className="mt-3 flex items-center gap-2 pt-3 border-t flex-wrap">
                   <input
                     type="date"
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
                     className="border rounded px-3 py-1.5 text-sm"
                   />
-                  <button
-                    onClick={() => confirmReschedule(f.id)}
-                    className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700"
-                  >
+                  <Button size="sm" onClick={() => confirmReschedule(f.id)}>
                     Save
-                  </button>
-                  <button
-                    onClick={() => setReschedulingId(null)}
-                    className="text-sm text-gray-500 hover:text-gray-700"
-                  >
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setReschedulingId(null)}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               )}
             </li>

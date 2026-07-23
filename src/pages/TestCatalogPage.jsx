@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchTests, updateTest } from '../store/testCatalogSlice';
+import { Button } from '../components/ui/button';
 
 const CATEGORIES = [
   { value: 'test',    label: 'Test' },
@@ -159,8 +160,8 @@ export default function TestCatalogPage() {
                       </td>
                       <td className="px-4 py-2 text-gray-400">{t.active ? 'Active' : 'Inactive'}</td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
-                        <button onClick={() => saveEdit(t.id)} className="text-green-600 hover:underline mr-3">Save</button>
-                        <button onClick={() => setEditingId(null)} className="text-gray-400 hover:underline">Cancel</button>
+                        <Button variant="link" size="xs" onClick={() => saveEdit(t.id)} className="text-green-600 mr-1">Save</Button>
+                        <Button variant="link" size="xs" onClick={() => setEditingId(null)} className="text-gray-400">Cancel</Button>
                       </td>
                     </>
                   ) : (
@@ -180,10 +181,10 @@ export default function TestCatalogPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
-                        <button onClick={() => startEdit(t)} className="text-gray-500 hover:underline mr-3">Edit</button>
-                        <button onClick={() => toggleActive(t)} className="text-gray-500 hover:underline">
+                        <Button variant="link" size="xs" onClick={() => startEdit(t)} className="text-gray-500 mr-1">Edit</Button>
+                        <Button variant="link" size="xs" onClick={() => toggleActive(t)} className="text-gray-500">
                           {t.active ? 'Deactivate' : 'Activate'}
-                        </button>
+                        </Button>
                       </td>
                     </>
                   )}

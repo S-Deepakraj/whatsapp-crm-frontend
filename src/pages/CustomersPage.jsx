@@ -8,6 +8,7 @@ import WhatsAppButton from '../components/WhatsAppButton';
 import CallButton from '../components/CallButton';
 import Pagination from '../components/Pagination';
 import api from '../services/api';
+import { Button } from '../components/ui/button';
 
 const PAGE_SIZE = 20;
 
@@ -58,19 +59,12 @@ export default function CustomersPage() {
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">Customers</h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="border px-4 py-2 rounded hover:bg-gray-50 text-sm shrink-0 disabled:opacity-50"
-          >
+          <Button variant="outline" onClick={handleExport} disabled={exporting} className="shrink-0">
             {exporting ? 'Exporting…' : 'Export CSV'}
-          </button>
-          <Link
-            to="/customers/new"
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm shrink-0"
-          >
-            + Add Customer
-          </Link>
+          </Button>
+          <Button asChild className="shrink-0">
+            <Link to="/customers/new">+ Add Customer</Link>
+          </Button>
         </div>
       </div>
 

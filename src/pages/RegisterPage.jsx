@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../hooks/redux';
 import { register } from '../store/authSlice';
+import { Button } from '../components/ui/button';
 
 export default function RegisterPage() {
   const dispatch = useAppDispatch();
@@ -56,12 +57,9 @@ export default function RegisterPage() {
           value={form.password} onChange={handleChange} required
         />
 
-        <button
-          type="submit" disabled={loading}
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50"
-        >
+        <Button type="submit" disabled={loading} size="lg" className="w-full">
           {loading ? 'Creating account…' : 'Create Account'}
-        </button>
+        </Button>
 
         <p className="text-sm text-center text-gray-500">
           Already have an account?{' '}

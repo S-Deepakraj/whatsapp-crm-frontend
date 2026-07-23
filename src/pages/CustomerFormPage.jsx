@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { createCustomer, fetchCustomer, updateCustomer } from '../store/customerSlice';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
+import { Button } from '../components/ui/button';
 
 const EMPTY_FORM = {
   name: '',
@@ -138,19 +139,16 @@ export default function CustomerFormPage() {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <button
-            type="submit" disabled={loading}
-            className="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm"
-          >
+          <Button type="submit" disabled={loading}>
             {loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Customer'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={() => navigate(isEdit ? `/customers/${id}` : '/customers')}
-            className="px-5 py-2 rounded border text-sm hover:bg-gray-50"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
+import { Button } from '../components/ui/button';
 
 const STATUS_LABEL = {
   confirmed:    'Confirmed',
@@ -114,36 +115,35 @@ export default function TechnicianStatusPage() {
                 className="w-full border rounded px-3 py-2 text-sm"
               />
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={() => submitStatus('issue', issueNote)}
                   disabled={submitting}
-                  className="flex-1 bg-red-500 text-white py-2 rounded text-sm font-medium disabled:opacity-50"
+                  className="flex-1 bg-red-500 text-white hover:bg-red-600"
                 >
                   {submitting ? 'Sending…' : 'Submit Issue'}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => setShowIssueForm(false)}
-                  className="flex-1 border py-2 rounded text-sm"
+                  className="flex-1"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           ) : actions.length > 0 ? (
             <div className="space-y-2">
               {actions.map((a) => (
-                <button
+                <Button
                   key={a.status}
+                  size="lg"
+                  variant={a.status === 'issue' ? 'outline' : 'default'}
                   onClick={() => (a.status === 'issue' ? setShowIssueForm(true) : submitStatus(a.status))}
                   disabled={submitting}
-                  className={`w-full py-2.5 rounded text-sm font-medium disabled:opacity-50 ${
-                    a.status === 'issue'
-                      ? 'border border-red-300 text-red-500'
-                      : 'bg-green-600 text-white'
-                  }`}
+                  className={`w-full ${a.status === 'issue' ? 'border-red-300 text-red-500 hover:bg-red-50' : ''}`}
                 >
                   {submitting ? 'Updating…' : a.label}
-                </button>
+                </Button>
               ))}
             </div>
           ) : (

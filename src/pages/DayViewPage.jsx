@@ -5,6 +5,7 @@ import { fetchOrders, assignOrder } from '../store/orderSlice';
 import { fetchTechnicians } from '../store/technicianSlice';
 import CallButton from '../components/CallButton';
 import WhatsAppButton from '../components/WhatsAppButton';
+import { Button } from '../components/ui/button';
 
 const STATUS_STYLES = {
   confirmed:     { label: 'Confirmed',     className: 'bg-blue-100 text-blue-700' },
@@ -154,33 +155,35 @@ function OrderCard({ order: o, technicians, onAssign, assignedTechnicianId }) {
         <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{o.issue_note}</p>
       )}
 
-      <div className="flex items-center justify-between gap-2 pt-1.5 border-t">
-        <div className="flex items-center gap-2">
-          <CallButton phone={o.customer_phone} className="text-xs text-gray-500 hover:text-gray-700">
+      <div className="flex items-center justify-between gap-2 pt-1.5 border-t flex-wrap">
+        <div className="flex items-center gap-3">
+          <CallButton phone={o.customer_phone} className="text-xs text-gray-500 hover:text-gray-700 py-1">
             Call
           </CallButton>
           {assignedTechnicianId && (
             <WhatsAppButton
               phone={o.technician_phone}
               message={buildTechnicianMessage(o)}
-              className="text-xs text-blue-600 hover:text-blue-700"
+              className="text-xs text-blue-600 hover:text-blue-700 py-1"
             >
               WhatsApp
             </WhatsAppButton>
           )}
         </div>
         {assignedTechnicianId ? (
-          <button
+          <Button
+            variant="link"
+            size="xs"
             onClick={() => onAssign(o.id, null)}
-            className="text-xs text-red-400 hover:text-red-600"
+            className="text-red-400 hover:text-red-600"
           >
             Unassign
-          </button>
+          </Button>
         ) : (
           <select
             value=""
             onChange={(e) => e.target.value && onAssign(o.id, Number(e.target.value))}
-            className="text-xs border rounded px-1.5 py-1"
+            className="text-xs border rounded px-1.5 py-1.5"
           >
             <option value="">Assign to…</option>
             {technicians.map((t) => (

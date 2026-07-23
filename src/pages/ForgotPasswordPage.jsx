@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppDispatch } from '../hooks/redux';
 import { forgotPassword } from '../store/authSlice';
+import { Button } from '../components/ui/button';
 
 export default function ForgotPasswordPage() {
   const dispatch = useAppDispatch();
@@ -39,12 +40,9 @@ export default function ForgotPasswordPage() {
               type="email" placeholder="Email" value={email}
               onChange={(e) => setEmail(e.target.value)} required
             />
-            <button
-              type="submit" disabled={loading}
-              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50"
-            >
+            <Button type="submit" disabled={loading} size="lg" className="w-full">
               {loading ? 'Sending…' : 'Send Reset Link'}
-            </button>
+            </Button>
             <p className="text-sm text-center text-gray-500">
               <Link to="/login" className="text-green-600 hover:underline">Back to sign in</Link>
             </p>

@@ -11,6 +11,7 @@ import Pagination        from '../components/Pagination';
 import { buildFollowupMessage, buildReviewMessage } from '../utils/messageBuilder';
 import { buildWhatsAppLink } from '../utils/whatsapp';
 import api from '../services/api';
+import { Button } from '../components/ui/button';
 
 const PAGE_SIZE = 5;
 
@@ -79,9 +80,10 @@ function VisitRow({ visit, onDelete }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="bg-white border rounded-xl overflow-hidden">
-      <button
+      <Button
+        variant="ghost"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-left"
+        className="w-full h-auto justify-between rounded-none px-4 py-3 font-normal"
       >
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium text-gray-800 w-28 shrink-0">{fmt(visit.visit_date)}</span>
@@ -95,7 +97,7 @@ function VisitRow({ visit, onDelete }) {
           </span>
           <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
         </div>
-      </button>
+      </Button>
 
       {open && (
         <div className="border-t px-4 py-3 bg-gray-50">
@@ -116,12 +118,14 @@ function VisitRow({ visit, onDelete }) {
             </tbody>
           </table>
           {visit.notes && <p className="text-xs text-gray-500 mb-3">Note: {visit.notes}</p>}
-          <button
+          <Button
+            variant="link"
+            size="xs"
             onClick={() => onDelete(visit.id)}
-            className="text-xs text-red-500 hover:text-red-700"
+            className="text-red-500 hover:text-red-700"
           >
             Delete visit
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -245,15 +249,16 @@ export default function CustomerProfilePage() {
           )}
         </div>
         <div className="flex gap-2">
-          <Link to={`/customers/${id}/edit`} className="text-sm border px-3 py-2 rounded hover:bg-gray-50">
-            Edit
-          </Link>
-          <button
+          <Button asChild variant="outline">
+            <Link to={`/customers/${id}/edit`}>Edit</Link>
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => setConfirmDelete(true)}
-            className="text-sm border border-red-200 text-red-500 px-3 py-2 rounded hover:bg-red-50"
+            className="border-red-200 text-red-500 hover:bg-red-50"
           >
             Delete
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -325,7 +330,7 @@ export default function CustomerProfilePage() {
 
       {/* ── Tabs ── */}
       <div>
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit mb-4">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit max-w-full overflow-x-auto mb-4">
           {[
             { key: 'visits',   label: 'Visit History' },
             { key: 'followups', label: 'Follow-Ups' },
@@ -334,7 +339,7 @@ export default function CustomerProfilePage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                 tab === t.key ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -382,12 +387,13 @@ export default function CustomerProfilePage() {
                       <span className="text-xs text-gray-400 ml-2">Due: {fmt(f.due_date)}</span>
                     </div>
                     {f.status === 'pending' && (
-                      <button
+                      <Button
+                        size="xs"
                         onClick={() => dispatch(completeFollowup(f.id))}
-                        className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200"
+                        className="bg-green-100 text-green-700 hover:bg-green-200"
                       >
                         Mark Done
-                      </button>
+                      </Button>
                     )}
                   </div>
                 ))
@@ -466,18 +472,19 @@ export default function CustomerProfilePage() {
               This will permanently delete <strong>{customer.name}</strong> along with all visits, follow-ups and reviews.
             </p>
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={handleDeleteCustomer} disabled={deleting}
-                className="flex-1 bg-red-500 text-white py-2 rounded hover:bg-red-600 disabled:opacity-50 text-sm"
+                className="flex-1 bg-red-500 text-white hover:bg-red-600"
               >
                 {deleting ? 'Deleting…' : 'Yes, delete'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setConfirmDelete(false)}
-                className="flex-1 border py-2 rounded hover:bg-gray-50 text-sm"
+                className="flex-1"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         </div>

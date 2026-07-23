@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchSettings, saveSettings } from '../store/settingsSlice';
+import { Button } from '../components/ui/button';
 
 const TEMPLATE_FIELDS = [
   { key: 'followupTemplate', label: 'Follow-Up Template', hint: 'Sent for general check-ins and reminders.' },
@@ -87,13 +88,9 @@ export default function SettingsPage() {
         ))}
 
         <div className="flex items-center gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm"
-          >
+          <Button type="submit" disabled={saving}>
             {saving ? 'Saving…' : 'Save Settings'}
-          </button>
+          </Button>
           {saved && <span className="text-sm text-green-600">Saved ✓</span>}
         </div>
       </form>

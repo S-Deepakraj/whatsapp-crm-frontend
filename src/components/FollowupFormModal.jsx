@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../hooks/redux';
 import { addFollowup } from '../store/followupSlice';
 import api from '../services/api';
+import { Button } from './ui/button';
 
 const TYPES = [
   { value: 'call', label: 'Call' },
@@ -51,7 +52,7 @@ export default function FollowupFormModal({ customerId, customerName, onClose, o
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
+      <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold mb-4">Add Follow-Up</h2>
 
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
@@ -105,20 +106,12 @@ export default function FollowupFormModal({ customerId, customerName, onClose, o
           </div>
 
           <div className="flex gap-3 pt-1">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm"
-            >
+            <Button type="submit" disabled={loading} className="flex-1">
               {loading ? 'Saving…' : 'Add Follow-Up'}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 border py-2 rounded hover:bg-gray-50 text-sm"
-            >
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </div>

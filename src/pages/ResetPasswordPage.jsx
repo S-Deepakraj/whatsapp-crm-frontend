@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '../hooks/redux';
 import { resetPassword } from '../store/authSlice';
+import { Button } from '../components/ui/button';
 
 export default function ResetPasswordPage() {
   const dispatch = useAppDispatch();
@@ -63,12 +64,9 @@ export default function ResetPasswordPage() {
           type="password" placeholder="Confirm new password" value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6}
         />
-        <button
-          type="submit" disabled={loading}
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50"
-        >
+        <Button type="submit" disabled={loading} size="lg" className="w-full">
           {loading ? 'Resetting…' : 'Reset Password'}
-        </button>
+        </Button>
 
         <p className="text-sm text-center text-gray-500">
           <Link to="/login" className="text-green-600 hover:underline">Back to sign in</Link>

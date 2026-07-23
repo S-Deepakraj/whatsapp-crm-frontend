@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchFollowups, completeFollowup } from '../store/followupSlice';
 import { buildFollowupMessage, buildThankYouMessage } from '../utils/messageBuilder';
 import WhatsAppButton from '../components/WhatsAppButton';
+import { Button } from '../components/ui/button';
 
 const CARDS = [
   {
@@ -152,12 +153,13 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-400 mt-0.5">{f.customer_phone} · Due {formatDate(f.due_date)}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button
+                  <Button
+                    size="sm"
                     onClick={() => dispatch(completeFollowup(f.id))}
-                    className="text-xs bg-green-100 text-green-700 px-2.5 py-1.5 rounded font-medium hover:bg-green-200"
+                    className="bg-green-100 text-green-700 hover:bg-green-200"
                   >
                     Complete
-                  </button>
+                  </Button>
                   <WhatsAppButton
                     phone={f.customer_phone}
                     message={buildFollowupMessage(settings, f.customer_name)}
@@ -165,12 +167,9 @@ export default function DashboardPage() {
                   >
                     WhatsApp
                   </WhatsAppButton>
-                  <Link
-                    to={`/customers/${f.customer_id}`}
-                    className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded font-medium hover:bg-gray-200"
-                  >
-                    View
-                  </Link>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link to={`/customers/${f.customer_id}`}>View</Link>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -217,12 +216,9 @@ export default function DashboardPage() {
                   >
                     WhatsApp
                   </WhatsAppButton>
-                  <Link
-                    to={`/customers/${v.customer_id}`}
-                    className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded font-medium hover:bg-gray-200"
-                  >
-                    View
-                  </Link>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link to={`/customers/${v.customer_id}`}>View</Link>
+                  </Button>
                 </div>
               </div>
             ))}

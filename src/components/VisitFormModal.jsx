@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { createVisit } from '../store/visitSlice';
 import { fetchTests } from '../store/testCatalogSlice';
+import { Button } from './ui/button';
 
 const EMPTY_ITEM = { testCatalogId: '', serviceName: '', query: '', amount: '' };
 
@@ -91,7 +92,7 @@ export default function VisitFormModal({ customerId, onClose, onCreated }) {
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
         <div className="px-6 py-4 border-b flex items-center justify-between">
           <h2 className="text-lg font-semibold">Log Visit</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <Button type="button" variant="ghost" size="icon-sm" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</Button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
@@ -112,13 +113,9 @@ export default function VisitFormModal({ customerId, onClose, onCreated }) {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-medium text-gray-700">Services</label>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="text-xs text-green-600 hover:text-green-700 font-medium"
-                >
+                <Button type="button" variant="link" size="xs" onClick={addItem} className="text-green-600 hover:text-green-700">
                   + Add service
-                </button>
+                </Button>
               </div>
               <div className="space-y-2">
                 {items.map((item, i) => {
@@ -129,7 +126,7 @@ export default function VisitFormModal({ customerId, onClose, onCreated }) {
                         {item.testCatalogId ? (
                           <div className="flex items-center justify-between border rounded px-3 py-2 text-sm bg-gray-50">
                             <span>{item.serviceName}</span>
-                            <button type="button" onClick={() => clearItemTest(i)} className="text-xs text-gray-400 hover:text-red-500">Change</button>
+                            <Button type="button" variant="link" size="xs" onClick={() => clearItemTest(i)} className="text-gray-400 hover:text-red-500">Change</Button>
                           </div>
                         ) : (
                           <input
@@ -144,10 +141,11 @@ export default function VisitFormModal({ customerId, onClose, onCreated }) {
                           <ul className="absolute z-10 left-0 right-0 bg-white border rounded mt-1 divide-y text-sm shadow-lg max-h-56 overflow-y-auto">
                             {suggestions.map((t) => (
                               <li key={t.id}>
-                                <button
+                                <Button
                                   type="button"
+                                  variant="ghost"
                                   onClick={() => pickTest(i, t)}
-                                  className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center justify-between gap-2"
+                                  className="w-full h-auto justify-between rounded-none px-3 py-2 font-normal"
                                 >
                                   <span>
                                     {t.name}
@@ -156,7 +154,7 @@ export default function VisitFormModal({ customerId, onClose, onCreated }) {
                                   <span className="text-xs text-gray-400 shrink-0">
                                     {CATEGORY_LABEL[t.category] ?? t.category}{t.mrp != null ? ` · MRP ₹${t.mrp}` : ''}
                                   </span>
-                                </button>
+                                </Button>
                               </li>
                             ))}
                           </ul>
@@ -172,13 +170,15 @@ export default function VisitFormModal({ customerId, onClose, onCreated }) {
                         className="w-24 border rounded px-3 py-2 text-sm"
                       />
                       {items.length > 1 && (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => removeItem(i)}
-                          className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none"
+                          className="text-gray-400 hover:text-red-500 text-lg leading-none"
                         >
                           ×
-                        </button>
+                        </Button>
                       )}
                     </div>
                   );
@@ -204,20 +204,12 @@ export default function VisitFormModal({ customerId, onClose, onCreated }) {
           </div>
 
           <div className="px-6 py-4 border-t flex gap-3">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
-            >
+            <Button type="submit" disabled={loading} className="flex-1">
               {loading ? 'Saving…' : 'Save Visit'}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 border py-2 rounded hover:bg-gray-50 text-sm"
-            >
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </div>

@@ -31,6 +31,11 @@ export const resendVerification = createAsyncThunk('auth/resendVerification', as
   return data;
 });
 
+export const fetchCurrentUser = createAsyncThunk('auth/fetchCurrentUser', async () => {
+  const { data } = await api.get('/auth/me');
+  return data;
+});
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
@@ -60,6 +65,14 @@ const authSlice = createSlice({
       })
       .addCase(verifyEmail.fulfilled, (state) => {
         if (state.user) state.user.emailVerified = true;
+      })
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.user = action.payload;
+      })
+      .addCase(fetchCurrentUser.rejected, (state) => {
+        // Token is invalid/expired — the axios interceptor already
+        // redirects to /login on the 401; just clear stale user data here.
+        state.user = null;
       });
   },
 });

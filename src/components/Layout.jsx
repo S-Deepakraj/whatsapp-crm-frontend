@@ -1,32 +1,46 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard, Users, ClipboardList, CalendarDays, Wrench, FlaskConical, Bell, Settings as SettingsIcon, LogOut,
+} from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { logout, resendVerification } from '../store/authSlice';
+import { logout, resendVerification, fetchCurrentUser } from '../store/authSlice';
 import { fetchSettings } from '../store/settingsSlice';
+import {
+  Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton,
+  SidebarMenuItem, SidebarProvider, SidebarRail, SidebarTrigger,
+} from './ui/sidebar';
+import { TooltipProvider } from './ui/tooltip';
+import { Button } from './ui/button';
 
 const navItems = [
-  { to: '/', label: 'Dashboard' },
-  { to: '/customers', label: 'Customers' },
-  { to: '/orders', label: 'Orders' },
-  { to: '/day-view', label: 'Day View' },
-  { to: '/technicians', label: 'Technicians' },
-  { to: '/test-catalog', label: 'Test Catalog' },
-  { to: '/followups', label: 'Follow-Ups' },
-  { to: '/settings', label: 'Settings' },
+  { to: '/',             label: 'Dashboard',    icon: LayoutDashboard, end: true },
+  { to: '/customers',    label: 'Customers',    icon: Users },
+  { to: '/orders',       label: 'Orders',       icon: ClipboardList },
+  { to: '/day-view',     label: 'Day View',     icon: CalendarDays },
+  { to: '/technicians',  label: 'Technicians',  icon: Wrench },
+  { to: '/test-catalog', label: 'Test Catalog', icon: FlaskConical },
+  { to: '/followups',    label: 'Follow-Ups',   icon: Bell },
+  { to: '/settings',     label: 'Settings',     icon: SettingsIcon },
 ];
 
 export default function Layout({ children }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { pathname } = useLocation();
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState('idle'); // idle | sending | sent
   const settingsLoaded = useAppSelector((s) => Boolean(s.settings.data));
-  const emailVerified = useAppSelector((s) => s.auth.user?.emailVerified);
+  const user = useAppSelector((s) => s.auth.user);
+  const emailVerified = user?.emailVerified;
 
   useEffect(() => {
     if (!settingsLoaded) dispatch(fetchSettings());
   }, [dispatch, settingsLoaded]);
+
+  useEffect(() => {
+    if (!user) dispatch(fetchCurrentUser());
+  }, [dispatch, user]);
 
   function handleLogout() {
     dispatch(logout());
@@ -41,105 +55,103 @@ export default function Layout({ children }) {
 
   const showVerifyBanner = emailVerified === false && !bannerDismissed;
 
-  const navLinks = (
-    <nav className="flex-1 px-3 py-4 space-y-1">
-      {navItems.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.to === '/'}
-          onClick={() => setMobileOpen(false)}
-          className={({ isActive }) =>
-            `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive ? 'bg-green-50 text-green-700' : 'text-gray-600 hover:bg-gray-100'
-            }`
-          }
-        >
-          {item.label}
-        </NavLink>
-      ))}
-    </nav>
-  );
-
   return (
-    <div className="min-h-screen bg-gray-50 md:flex">
-      {/* Mobile top bar */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b sticky top-0 z-30">
-        <button
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
-          className="text-gray-600 text-xl leading-none px-1"
-        >
-          ☰
-        </button>
-        <span className="font-bold text-green-600">WhatsApp CRM</span>
-        <div className="w-6" />
-      </div>
-
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-40 flex">
-          <div className="w-64 max-w-[80%] bg-white flex flex-col">
-            <div className="px-6 py-5 border-b flex items-center justify-between">
-              <span className="text-lg font-bold text-green-600">WhatsApp CRM</span>
-              <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="text-gray-400 text-xl leading-none">×</button>
+    <TooltipProvider>
+      <SidebarProvider>
+        <Sidebar collapsible="icon">
+          <SidebarHeader>
+            <div className="flex items-center justify-between px-2 py-1 group-data-[collapsible=icon]:justify-center">
+              <Link to="/" className="flex items-center gap-2 overflow-hidden group-data-[collapsible=icon]:hidden">
+                <span className="text-lg font-bold text-green-600 shrink-0">🩺</span>
+                <span className="text-lg font-bold text-green-600 truncate">
+                  WhatsApp CRM
+                </span>
+              </Link>
+              <SidebarTrigger />
             </div>
-            {navLinks}
-            <div className="px-3 py-4 border-t">
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 bg-black/40" onClick={() => setMobileOpen(false)} />
-        </div>
-      )}
+          </SidebarHeader>
 
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-56 bg-white border-r flex-col">
-        <div className="px-6 py-5 border-b">
-          <span className="text-lg font-bold text-green-600">WhatsApp CRM</span>
-        </div>
-        {navLinks}
-        <div className="px-3 py-4 border-t">
-          <button
-            onClick={handleLogout}
-            className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50"
-          >
-            Logout
-          </button>
-        </div>
-      </aside>
+          <SidebarContent>
+            <SidebarMenu className="px-2">
+              {navItems.map((item) => {
+                const active = item.end ? pathname === item.to : pathname.startsWith(item.to);
+                const Icon = item.icon;
+                return (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                      <Link to={item.to}>
+                        <Icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarContent>
 
-      <main className="flex-1 overflow-auto min-w-0">
-        {showVerifyBanner && (
-          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap text-sm">
-            <span className="text-yellow-800">
-              {resendStatus === 'sent'
-                ? 'Verification email sent — check your inbox.'
-                : 'Please verify your email address.'}
-            </span>
-            <div className="flex items-center gap-3 shrink-0">
-              {resendStatus !== 'sent' && (
-                <button
-                  onClick={handleResendVerification}
-                  disabled={resendStatus === 'sending'}
-                  className="text-yellow-800 font-medium hover:underline disabled:opacity-50"
+          <SidebarFooter>
+            {user && (
+              <div className="px-3 py-2 group-data-[collapsible=icon]:hidden">
+                <p className="text-sm font-medium text-gray-800 truncate">{user.businessName}</p>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              </div>
+            )}
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={handleLogout}
+                  tooltip="Logout"
+                  className="text-red-500 hover:bg-red-50 hover:text-red-600"
                 >
-                  {resendStatus === 'sending' ? 'Sending…' : 'Resend email'}
-                </button>
-              )}
-              <button onClick={() => setBannerDismissed(true)} className="text-yellow-600 hover:text-yellow-800">
-                Dismiss
-              </button>
-            </div>
+                  <LogOut />
+                  <span>Logout</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+          <SidebarRail />
+        </Sidebar>
+
+        <SidebarInset>
+          {/* Mobile top bar — opens the sidebar as a slide-over sheet */}
+          <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b sticky top-0 z-30">
+            <SidebarTrigger />
+            <span className="font-bold text-green-600">WhatsApp CRM</span>
+            <div className="w-6" />
           </div>
-        )}
-        {children}
-      </main>
-    </div>
+
+          {showVerifyBanner && (
+            <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap text-sm">
+              <span className="text-yellow-800">
+                {resendStatus === 'sent'
+                  ? 'Verification email sent — check your inbox.'
+                  : 'Please verify your email address.'}
+              </span>
+              <div className="flex items-center gap-3 shrink-0">
+                {resendStatus !== 'sent' && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={handleResendVerification}
+                    disabled={resendStatus === 'sending'}
+                    className="text-yellow-800"
+                  >
+                    {resendStatus === 'sending' ? 'Sending…' : 'Resend email'}
+                  </Button>
+                )}
+                <Button variant="link" size="sm" onClick={() => setBannerDismissed(true)} className="text-yellow-600 hover:text-yellow-800">
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 bg-gray-50 min-h-screen">
+            {children}
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }
