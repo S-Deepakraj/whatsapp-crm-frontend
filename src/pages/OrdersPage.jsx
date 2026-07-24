@@ -215,7 +215,7 @@ export default function OrdersPage() {
                           Call
                         </CallButton>
                       )}
-                      {['confirmed', 'assigned'].includes(o.status) && (
+                      {['confirmed', 'assigned', 'collected'].includes(o.status) && (
                         <Button
                           size="sm"
                           variant="secondary"

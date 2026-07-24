@@ -45,6 +45,9 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
   const isWalkIn = channel === 'walk_in';
   const isIls = channel === 'ils';
   const isHomeCollection = channel === 'home_collection';
+  // Once a sample's been collected, the address/slot are history — editing
+  // stays open for tests/notes/patient name, matching the backend guard.
+  const canEditAddressSlot = isHomeCollection && (!isEdit || ['confirmed', 'assigned'].includes(order.status));
 
   const [partnerLabId, setPartnerLabId] = useState(order?.partner_lab_id ? String(order.partner_lab_id) : '');
   const [patientName, setPatientName] = useState(order?.patient_name || '');
@@ -161,11 +164,11 @@ function updateLine(i, field, value) {
       setError('Patient name is required.');
       return;
     }
-    if (isHomeCollection && !collectionAddress.trim()) {
+    if (canEditAddressSlot && !collectionAddress.trim()) {
       setError('Collection address is required.');
       return;
     }
-    if (isHomeCollection && slotEnd <= slotStart) {
+    if (canEditAddressSlot && slotEnd <= slotStart) {
       setError('End time must be after start time.');
       return;
     }
@@ -188,7 +191,7 @@ function updateLine(i, field, value) {
           notes: notes || null,
           testLines,
           ...(isIls ? { patientName: patientName.trim() } : {}),
-          ...(isHomeCollection ? {
+          ...(canEditAddressSlot ? {
             collectionAddress: collectionAddress.trim(),
             slotStart,
             slotEnd,
@@ -428,13 +431,19 @@ function updateLine(i, field, value) {
             {isHomeCollection && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Collection address</label>
-                <textarea
-                  rows={2}
-                  value={collectionAddress}
-                  onChange={(e) => setCollectionAddress(e.target.value)}
-                  placeholder="House/flat, street, landmark…"
-                  className="w-full border rounded px-3 py-2 text-sm"
-                />
+                {canEditAddressSlot ? (
+                  <textarea
+                    rows={2}
+                    value={collectionAddress}
+                    onChange={(e) => setCollectionAddress(e.target.value)}
+                    placeholder="House/flat, street, landmark…"
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  />
+                ) : (
+                  <div className="border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600">
+                    {collectionAddress || '—'}
+                  </div>
+                )}
               </div>
             )}
 
@@ -455,37 +464,45 @@ function updateLine(i, field, value) {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-sm font-medium text-gray-700">Collection window</label>
-                  <div className="flex gap-1">
-                    {SLOT_PRESETS.map((p) => (
-                      <Button
-                        key={p.label}
-                        type="button"
-                        variant="secondary"
-                        size="xs"
-                        onClick={() => { setSlotStart(p.start); setSlotEnd(p.end); }}
-                      >
-                        {p.label}
-                      </Button>
-                    ))}
+                  {canEditAddressSlot && (
+                    <div className="flex gap-1">
+                      {SLOT_PRESETS.map((p) => (
+                        <Button
+                          key={p.label}
+                          type="button"
+                          variant="secondary"
+                          size="xs"
+                          onClick={() => { setSlotStart(p.start); setSlotEnd(p.end); }}
+                        >
+                          {p.label}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {canEditAddressSlot ? (
+                  <div className="flex gap-3 items-center">
+                    <input
+                      type="time"
+                      step="900"
+                      value={slotStart}
+                      onChange={(e) => setSlotStart(e.target.value)}
+                      className="flex-1 border rounded px-3 py-2 text-sm"
+                    />
+                    <span className="text-gray-400 text-sm">to</span>
+                    <input
+                      type="time"
+                      step="900"
+                      value={slotEnd}
+                      onChange={(e) => setSlotEnd(e.target.value)}
+                      className="flex-1 border rounded px-3 py-2 text-sm"
+                    />
                   </div>
-                </div>
-                <div className="flex gap-3 items-center">
-                  <input
-                    type="time"
-                    step="900"
-                    value={slotStart}
-                    onChange={(e) => setSlotStart(e.target.value)}
-                    className="flex-1 border rounded px-3 py-2 text-sm"
-                  />
-                  <span className="text-gray-400 text-sm">to</span>
-                  <input
-                    type="time"
-                    step="900"
-                    value={slotEnd}
-                    onChange={(e) => setSlotEnd(e.target.value)}
-                    className="flex-1 border rounded px-3 py-2 text-sm"
-                  />
-                </div>
+                ) : (
+                  <div className="border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600">
+                    {slotStart} – {slotEnd}
+                  </div>
+                )}
               </div>
             )}
 
