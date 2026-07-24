@@ -6,6 +6,8 @@ import { fetchFollowups, completeFollowup } from '../store/followupSlice';
 import { buildFollowupMessage, buildThankYouMessage } from '../utils/messageBuilder';
 import WhatsAppButton from '../components/WhatsAppButton';
 import { Button } from '../components/ui/button';
+import PartnerLabAnalytics from '../components/PartnerLabAnalytics';
+import TodaySplitPieChart from '../components/TodaySplitPieChart';
 
 const CARDS = [
   {
@@ -115,7 +117,7 @@ export default function DashboardPage() {
             <span className="text-2xl">💰</span>
           </div>
           <p className="text-4xl font-bold text-green-700">
-            {stats ? `₹${Number(stats.todayVisitsRevenue).toLocaleString('en-IN')}` : '—'}
+            {stats ? `₹${Number(stats.todayTotalRevenue).toLocaleString('en-IN')}` : '—'}
           </p>
           <p className="text-sm text-gray-600 mt-1">Total Amount Collected Today</p>
         </div>
@@ -129,6 +131,23 @@ export default function DashboardPage() {
           <p className="text-sm text-gray-600 mt-1">Total Cost (B2B) Today</p>
         </div>
       </div>
+
+      {stats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <TodaySplitPieChart
+            title="Amount Collected — DPS + by partner lab"
+            dps={stats.todayDpsRevenue}
+            byLab={stats.todayByLab}
+            valueKey="revenue"
+          />
+          <TodaySplitPieChart
+            title="Cost (B2B) — DPS + by partner lab"
+            dps={stats.todayDpsCostB2B}
+            byLab={stats.todayByLab}
+            valueKey="cost"
+          />
+        </div>
+      )}
 
       <div className="mt-8">
         <div className="flex items-center justify-between mb-3">
@@ -225,6 +244,8 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      <PartnerLabAnalytics />
     </div>
   );
 }

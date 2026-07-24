@@ -7,6 +7,7 @@ import settingsReducer from './settingsSlice';
 import testCatalogReducer from './testCatalogSlice';
 import orderReducer       from './orderSlice';
 import technicianReducer  from './technicianSlice';
+import partnerLabReducer  from './partnerLabSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,5 +19,6 @@ export const store = configureStore({
     testCatalog: testCatalogReducer,
     orders:      orderReducer,
     technicians: technicianReducer,
+    partnerLabs: partnerLabReducer,
   },
 });

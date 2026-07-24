@@ -17,6 +17,8 @@ import TestCatalogPage from './pages/TestCatalogPage';
 import DayViewPage from './pages/DayViewPage';
 import TechniciansPage from './pages/TechniciansPage';
 import TechnicianStatusPage from './pages/TechnicianStatusPage';
+import PartnerLabsPage from './pages/PartnerLabsPage';
+import PartnerLabRatesPage from './pages/PartnerLabRatesPage';
 
 function ProtectedRoute({ children }) {
   const token = useAppSelector((s) => s.auth.token);
@@ -42,6 +44,8 @@ export default function App() {
       <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
       <Route path="/day-view" element={<ProtectedRoute><DayViewPage /></ProtectedRoute>} />
       <Route path="/technicians" element={<ProtectedRoute><TechniciansPage /></ProtectedRoute>} />
+      <Route path="/partner-labs" element={<ProtectedRoute><PartnerLabsPage /></ProtectedRoute>} />
+      <Route path="/partner-labs/:id/rates" element={<ProtectedRoute><PartnerLabRatesPage /></ProtectedRoute>} />
       <Route path="/test-catalog" element={<ProtectedRoute><TestCatalogPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     </Routes>

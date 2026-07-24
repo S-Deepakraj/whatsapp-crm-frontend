@@ -38,10 +38,10 @@ export default function DayViewPage() {
   useEffect(() => { dispatch(fetchTechnicians()); }, [dispatch]);
   useEffect(() => { dispatch(fetchOrders({ scheduledDate, limit: 50 })); }, [dispatch, scheduledDate]);
 
-  // Walk-ins are collected on the spot, not by a technician, so they
-  // don't belong on this board at all.
+  // Walk-ins are collected on the spot and ILS samples already arrive at
+  // the lab — neither involves a technician, so they don't belong here.
   const activeOrders = useMemo(
-    () => orders.filter((o) => o.status !== 'cancelled' && o.channel !== 'walk_in'),
+    () => orders.filter((o) => o.status !== 'cancelled' && o.channel === 'home_collection'),
     [orders]
   );
 

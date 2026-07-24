@@ -121,7 +121,7 @@ export default function FollowupsPage() {
 
                 {/* Right: actions */}
                 {f.status === 'pending' && (
-                  <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
+                  <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
                     <CallButton
                       phone={f.customer_phone}
                       className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 font-medium"

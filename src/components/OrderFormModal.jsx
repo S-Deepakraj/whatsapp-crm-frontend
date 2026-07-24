@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { createOrder, updateOrder } from '../store/orderSlice';
 import { createCustomer } from '../store/customerSlice';
 import { fetchTests } from '../store/testCatalogSlice';
+import { fetchPartnerLabs, fetchPartnerLabRates } from '../store/partnerLabSlice';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 import { Button } from './ui/button';
@@ -30,6 +31,7 @@ function today() {
 export default function OrderFormModal({ order, onClose, onCreated }) {
   const dispatch = useAppDispatch();
   const tests = useAppSelector((s) => s.testCatalog.data);
+  const partnerLabs = useAppSelector((s) => s.partnerLabs.data);
   const isEdit = !!order;
 
   const [phoneQuery, setPhoneQuery] = useState('');
@@ -40,6 +42,12 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
 
   const [channel, setChannel] = useState(order?.channel || 'home_collection');
   const isWalkIn = channel === 'walk_in';
+  const isIls = channel === 'ils';
+  const isHomeCollection = channel === 'home_collection';
+
+  const [partnerLabId, setPartnerLabId] = useState(order?.partner_lab_id ? String(order.partner_lab_id) : '');
+  const [patientName, setPatientName] = useState(order?.patient_name || '');
+  const [labRates, setLabRates] = useState({});
 
   const [collectionAddress, setCollectionAddress] = useState(order?.collection_address || '');
   const [scheduledDate, setScheduledDate] = useState(order?.scheduled_date?.slice(0, 10) || tomorrow());
@@ -56,6 +64,21 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
   const [error, setError] = useState(null);
 
   useEffect(() => { dispatch(fetchTests()); }, [dispatch]);
+  useEffect(() => { dispatch(fetchPartnerLabs()); }, [dispatch]);
+
+  // Prefill agreed price from this lab's negotiated rate when picking a
+  // test on an ILS order — left blank (not MRP) if the lab hasn't been
+  // priced for that test yet, so nobody accidentally bills them at MRP.
+  useEffect(() => {
+    if (!isIls || !partnerLabId) { setLabRates({}); return; }
+    dispatch(fetchPartnerLabRates(Number(partnerLabId))).then((result) => {
+      if (fetchPartnerLabRates.fulfilled.match(result)) {
+        const map = {};
+        result.payload.forEach((r) => { if (r.rate != null) map[r.test_catalog_id] = r.rate; });
+        setLabRates(map);
+      }
+    });
+  }, [dispatch, isIls, partnerLabId]);
 
   useEffect(() => {
     if (selectedCustomer || !debouncedPhone.trim()) { setMatches([]); return; }
@@ -92,12 +115,15 @@ function updateLine(i, field, value) {
   function pickTest(i, test) {
     setLines((prev) => prev.map((line, idx) => {
       if (idx !== i) return line;
+      const prefill = isIls
+        ? (labRates[test.id] != null ? String(labRates[test.id]) : '')
+        : (test.mrp != null ? String(test.mrp) : '');
       return {
         ...line,
         testCatalogId: test.id,
         testLabel: test.name,
         query: '',
-        agreedPrice: line.agreedPrice || (test.mrp != null ? String(test.mrp) : ''),
+        agreedPrice: line.agreedPrice || prefill,
       };
     }));
   }
@@ -120,15 +146,23 @@ function updateLine(i, field, value) {
     e.preventDefault();
     setError(null);
 
-    if (!isEdit && !selectedCustomer && !(phoneQuery.trim() && newCustomerName.trim())) {
+    if (!isEdit && !isIls && !selectedCustomer && !(phoneQuery.trim() && newCustomerName.trim())) {
       setError('Select an existing customer or enter a name and phone for a new one.');
       return;
     }
-    if (!isWalkIn && !collectionAddress.trim()) {
+    if (!isEdit && isIls && !partnerLabId) {
+      setError('Select a partner lab.');
+      return;
+    }
+    if (isIls && !patientName.trim()) {
+      setError('Patient name is required.');
+      return;
+    }
+    if (isHomeCollection && !collectionAddress.trim()) {
       setError('Collection address is required.');
       return;
     }
-    if (!isWalkIn && slotEnd <= slotStart) {
+    if (isHomeCollection && slotEnd <= slotStart) {
       setError('End time must be after start time.');
       return;
     }
@@ -150,11 +184,12 @@ function updateLine(i, field, value) {
           scheduledDate,
           notes: notes || null,
           testLines,
-          ...(isWalkIn ? {} : {
+          ...(isIls ? { patientName: patientName.trim() } : {}),
+          ...(isHomeCollection ? {
             collectionAddress: collectionAddress.trim(),
             slotStart,
             slotEnd,
-          }),
+          } : {}),
         }));
 
         if (updateOrder.fulfilled.match(result)) {
@@ -162,6 +197,25 @@ function updateLine(i, field, value) {
           onClose();
         } else {
           setError(result.error?.message || 'Failed to update order.');
+        }
+        return;
+      }
+
+      if (isIls) {
+        const result = await dispatch(createOrder({
+          channel,
+          partnerLabId: Number(partnerLabId),
+          patientName: patientName.trim(),
+          scheduledDate,
+          notes: notes || null,
+          testLines,
+        }));
+
+        if (createOrder.fulfilled.match(result)) {
+          onCreated?.();
+          onClose();
+        } else {
+          setError(result.error?.message || 'Failed to create order.');
         }
         return;
       }
@@ -183,11 +237,11 @@ function updateLine(i, field, value) {
         scheduledDate,
         notes: notes || null,
         testLines,
-        ...(isWalkIn ? {} : {
+        ...(isHomeCollection ? {
           collectionAddress: collectionAddress.trim(),
           slotStart,
           slotEnd,
-        }),
+        } : {}),
       }));
 
       if (createOrder.fulfilled.match(result)) {
@@ -206,7 +260,7 @@ function updateLine(i, field, value) {
       <div className="bg-white rounded-xl shadow-lg w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="px-6 py-4 border-b flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            {isEdit ? 'Edit Order' : isWalkIn ? 'New Walk-in Order' : 'New Home Collection Order'}
+            {isEdit ? 'Edit Order' : isWalkIn ? 'New Walk-in Order' : isIls ? 'New ILS Order' : 'New Home Collection Order'}
           </h2>
           <Button type="button" variant="ghost" size="icon-sm" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</Button>
         </div>
@@ -222,7 +276,7 @@ function updateLine(i, field, value) {
                 <div className="flex gap-2">
                   <Button
                     type="button"
-                    variant={!isWalkIn ? 'default' : 'outline'}
+                    variant={isHomeCollection ? 'default' : 'outline'}
                     onClick={() => { setChannel('home_collection'); setScheduledDate((d) => (d === today() ? tomorrow() : d)); }}
                     className="flex-1"
                   >
@@ -236,18 +290,64 @@ function updateLine(i, field, value) {
                   >
                     Walk-in
                   </Button>
+                  <Button
+                    type="button"
+                    variant={isIls ? 'default' : 'outline'}
+                    onClick={() => { setChannel('ils'); setScheduledDate((d) => (d === tomorrow() ? today() : d)); }}
+                    className="flex-1"
+                  >
+                    Partner Lab
+                  </Button>
                 </div>
               </div>
             )}
 
-            {/* Customer */}
+            {/* Customer / Patient */}
             {isEdit ? (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                <div className="border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600">
-                  {order.customer_name} — {order.customer_phone}
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isIls ? 'Patient' : 'Customer'}</label>
+                {isIls ? (
+                  <input
+                    type="text"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  />
+                ) : (
+                  <div className="border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600">
+                    {order.customer_name} — {order.customer_phone}
+                  </div>
+                )}
+                {isIls && (
+                  <p className="text-xs text-gray-400 mt-1">Partner lab: {order.partner_lab_name}</p>
+                )}
               </div>
+            ) : isIls ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Partner lab</label>
+                  <select
+                    value={partnerLabId}
+                    onChange={(e) => setPartnerLabId(e.target.value)}
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  >
+                    <option value="">Select a partner lab…</option>
+                    {partnerLabs.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Patient name</label>
+                  <input
+                    type="text"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    placeholder="Full name"
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  />
+                </div>
+              </>
             ) : (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Customer phone</label>
@@ -298,7 +398,7 @@ function updateLine(i, field, value) {
             </div>
             )}
 
-            {!isWalkIn && (
+            {isHomeCollection && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Collection address</label>
                 <textarea
@@ -314,7 +414,7 @@ function updateLine(i, field, value) {
             {/* Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isWalkIn ? 'Collection date' : 'Date'}
+                {isHomeCollection ? 'Date' : isWalkIn ? 'Collection date' : 'Date received'}
               </label>
               <input
                 type="date"
@@ -324,7 +424,7 @@ function updateLine(i, field, value) {
               />
             </div>
 
-            {!isWalkIn && (
+            {isHomeCollection && (
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-sm font-medium text-gray-700">Collection window</label>
@@ -406,7 +506,9 @@ function updateLine(i, field, value) {
                                       {t.test_code ? <span className="text-gray-400"> · {t.test_code}</span> : null}
                                     </span>
                                     <span className="text-xs text-gray-400 shrink-0">
-                                      {CATEGORY_LABEL[t.category] ?? t.category}{t.mrp != null ? ` · MRP ₹${t.mrp}` : ''}
+                                      {isIls
+                                        ? (labRates[t.id] != null ? `Lab rate ₹${labRates[t.id]}` : 'No rate set')
+                                        : `${CATEGORY_LABEL[t.category] ?? t.category}${t.mrp != null ? ` · MRP ₹${t.mrp}` : ''}`}
                                     </span>
                                   </Button>
                                 </li>
@@ -448,7 +550,7 @@ function updateLine(i, field, value) {
 
           <div className="px-6 py-4 border-t flex gap-3">
             <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? 'Saving…' : isEdit ? 'Save Changes' : isWalkIn ? 'Register Walk-in' : 'Confirm Order'}
+              {loading ? 'Saving…' : isEdit ? 'Save Changes' : isWalkIn ? 'Register Walk-in' : isIls ? 'Create ILS Order' : 'Confirm Order'}
             </Button>
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel

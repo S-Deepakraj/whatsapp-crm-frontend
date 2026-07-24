@@ -159,9 +159,13 @@ export default function OrdersPage() {
               <li key={o.id} className="bg-white rounded-xl shadow-sm border p-4">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="space-y-1">
-                    <Link to={`/customers/${o.customer_id}`} className="font-medium text-gray-800 hover:underline">
-                      {o.customer_name}
-                    </Link>
+                    {o.channel === 'ils' ? (
+                      <span className="font-medium text-gray-800">{o.patient_name}</span>
+                    ) : (
+                      <Link to={`/customers/${o.customer_id}`} className="font-medium text-gray-800 hover:underline">
+                        {o.customer_name}
+                      </Link>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_STYLES[o.status]?.className ?? 'bg-gray-100 text-gray-600'}`}>
                         {STATUS_STYLES[o.status]?.label ?? o.status}
@@ -171,11 +175,16 @@ export default function OrdersPage() {
                           Walk-in
                         </span>
                       )}
-                      <span className="text-xs text-gray-400">{o.customer_phone}</span>
+                      {o.channel === 'ils' && (
+                        <span className="text-xs px-2 py-0.5 rounded font-medium bg-indigo-100 text-indigo-700">
+                          ILS · {o.partner_lab_name}
+                        </span>
+                      )}
+                      {o.channel !== 'ils' && <span className="text-xs text-gray-400">{o.customer_phone}</span>}
                       <span className="text-xs text-gray-400">
-                        {o.channel === 'walk_in'
-                          ? formatDate(o.scheduled_date)
-                          : `${formatDate(o.scheduled_date)} · ${formatTime(o.slot_start)}–${formatTime(o.slot_end)}`}
+                        {o.channel === 'home_collection'
+                          ? `${formatDate(o.scheduled_date)} · ${formatTime(o.slot_start)}–${formatTime(o.slot_end)}`
+                          : formatDate(o.scheduled_date)}
                       </span>
                       {o.technician_name && (
                         <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">
@@ -183,7 +192,7 @@ export default function OrdersPage() {
                         </span>
                       )}
                     </div>
-                    {o.channel !== 'walk_in' && <p className="text-xs text-gray-500">{o.collection_address}</p>}
+                    {o.channel === 'home_collection' && <p className="text-xs text-gray-500">{o.collection_address}</p>}
                     <p className="text-xs text-gray-600">
                       {o.test_lines.map((l) => l.testName).join(', ')}
                       {' — '}
@@ -197,13 +206,15 @@ export default function OrdersPage() {
                   </div>
 
                   {o.status !== 'cancelled' && (
-                    <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
-                      <CallButton
-                        phone={o.customer_phone}
-                        className="bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      >
-                        Call
-                      </CallButton>
+                    <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
+                      {o.channel !== 'ils' && (
+                        <CallButton
+                          phone={o.customer_phone}
+                          className="bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        >
+                          Call
+                        </CallButton>
+                      )}
                       {['confirmed', 'assigned'].includes(o.status) && (
                         <Button
                           size="sm"
@@ -213,7 +224,7 @@ export default function OrdersPage() {
                           Edit
                         </Button>
                       )}
-                      {o.channel !== 'walk_in' && (
+                      {o.channel === 'home_collection' && (
                         <>
                           {o.confirmation_sent_at && (
                             <span className="text-xs text-green-600">✓ Confirmed sent</span>
@@ -227,7 +238,7 @@ export default function OrdersPage() {
                           </Button>
                         </>
                       )}
-                      {o.channel !== 'walk_in' && o.scheduled_date?.slice(0, 10) === todayStr() && (
+                      {o.channel === 'home_collection' && o.scheduled_date?.slice(0, 10) === todayStr() && (
                         <>
                           {o.reminder_sent_at && (
                             <span className="text-xs text-green-600">✓ Reminder sent</span>
@@ -260,16 +271,18 @@ export default function OrdersPage() {
                             >
                               View Report
                             </Button>
-                            {o.report_sent_at ? (
-                              <span className="text-xs text-green-600">✓ Report sent</span>
-                            ) : (
-                              <Button
-                                size="sm"
-                                onClick={() => handleSendReport(o)}
-                                className="bg-blue-100 text-blue-700 hover:bg-blue-200"
-                              >
-                                Send Report
-                              </Button>
+                            {o.channel !== 'ils' && (
+                              o.report_sent_at ? (
+                                <span className="text-xs text-green-600">✓ Report sent</span>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSendReport(o)}
+                                  className="bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                >
+                                  Send Report
+                                </Button>
+                              )
                             )}
                           </>
                         ) : (
