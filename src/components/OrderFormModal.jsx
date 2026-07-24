@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { createOrder, updateOrder } from '../store/orderSlice';
-import { createCustomer } from '../store/customerSlice';
+import { createCustomer, updateCustomer } from '../store/customerSlice';
 import { fetchTests } from '../store/testCatalogSlice';
 import { fetchPartnerLabs, fetchPartnerLabRates } from '../store/partnerLabSlice';
 import { useDebounce } from '../hooks/useDebounce';
@@ -52,6 +52,12 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
   const [partnerLabId, setPartnerLabId] = useState(order?.partner_lab_id ? String(order.partner_lab_id) : '');
   const [patientName, setPatientName] = useState(order?.patient_name || '');
   const [labRates, setLabRates] = useState({});
+
+  // Editing the customer's own name/phone from here updates the customer
+  // record itself, not the order — same person, so no separate "patient
+  // name" field to keep in sync like ILS orders have.
+  const [customerName, setCustomerName] = useState(order?.customer_name || '');
+  const [customerPhone, setCustomerPhone] = useState(order?.customer_phone || '');
 
   const [collectionAddress, setCollectionAddress] = useState(order?.collection_address || '');
   const [scheduledDate, setScheduledDate] = useState(order?.scheduled_date?.slice(0, 10) || tomorrow());
@@ -164,6 +170,10 @@ function updateLine(i, field, value) {
       setError('Patient name is required.');
       return;
     }
+    if (isEdit && !isIls && (!customerName.trim() || !customerPhone.trim())) {
+      setError('Customer name and phone are required.');
+      return;
+    }
     if (canEditAddressSlot && !collectionAddress.trim()) {
       setError('Collection address is required.');
       return;
@@ -185,6 +195,19 @@ function updateLine(i, field, value) {
       }));
 
       if (isEdit) {
+        if (!isIls && (customerName.trim() !== order.customer_name || customerPhone.trim() !== order.customer_phone)) {
+          const customerResult = await dispatch(updateCustomer({
+            id: order.customer_id,
+            name: customerName.trim(),
+            phone: customerPhone.trim(),
+          }));
+          if (!updateCustomer.fulfilled.match(customerResult)) {
+            setError(customerResult.error?.message || 'Failed to update customer.');
+            setLoading(false);
+            return;
+          }
+        }
+
         const result = await dispatch(updateOrder({
           id: order.id,
           scheduledDate,
@@ -320,12 +343,28 @@ function updateLine(i, field, value) {
                     className="w-full border rounded px-3 py-2 text-sm"
                   />
                 ) : (
-                  <div className="border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600">
-                    {order.customer_name} — {order.customer_phone}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Name"
+                      className="flex-1 border rounded px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="Phone"
+                      className="w-36 border rounded px-3 py-2 text-sm"
+                    />
                   </div>
                 )}
                 {isIls && (
                   <p className="text-xs text-gray-400 mt-1">Partner lab: {order.partner_lab_name}</p>
+                )}
+                {!isIls && (
+                  <p className="text-xs text-gray-400 mt-1">Editing here updates this customer's profile everywhere, not just this order.</p>
                 )}
               </div>
             ) : isIls ? (
