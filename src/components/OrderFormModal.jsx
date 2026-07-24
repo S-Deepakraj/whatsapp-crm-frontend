@@ -39,6 +39,7 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
   const [matches, setMatches] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [newCustomerName, setNewCustomerName] = useState('');
+  const [addingNew, setAddingNew] = useState(false);
 
   const [channel, setChannel] = useState(order?.channel || 'home_collection');
   const isWalkIn = channel === 'walk_in';
@@ -92,12 +93,14 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
     setSelectedCustomer(c);
     setMatches([]);
     setPhoneQuery(c.phone);
+    setAddingNew(false);
   }
 
   function clearCustomer() {
     setSelectedCustomer(null);
     setPhoneQuery('');
     setNewCustomerName('');
+    setAddingNew(false);
   }
 
   function addLine() {
@@ -361,29 +364,42 @@ function updateLine(i, field, value) {
                   <input
                     type="text"
                     value={phoneQuery}
-                    onChange={(e) => setPhoneQuery(e.target.value)}
+                    onChange={(e) => { setPhoneQuery(e.target.value); setAddingNew(false); }}
                     placeholder="Search by phone or name…"
                     className="w-full border rounded px-3 py-2 text-sm"
                   />
-                  {matches.length > 0 && (
-                    <ul className="border rounded mt-1 divide-y text-sm">
-                      {matches.map((c) => (
-                        <li key={c.id}>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => pickCustomer(c)}
-                            className="w-full justify-start rounded-none h-auto px-3 py-2 font-normal"
-                          >
-                            {c.name} — {c.phone}
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
+                  {matches.length > 0 && !addingNew && (
+                    <>
+                      <ul className="border rounded mt-1 divide-y text-sm">
+                        {matches.map((c) => (
+                          <li key={c.id}>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => pickCustomer(c)}
+                              className="w-full justify-start rounded-none h-auto px-3 py-2 font-normal"
+                            >
+                              {c.name} — {c.phone}
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="xs"
+                        onClick={() => setAddingNew(true)}
+                        className="text-green-600 hover:text-green-700 mt-1"
+                      >
+                        + Not one of these — new patient with this number
+                      </Button>
+                    </>
                   )}
-                  {phoneQuery.trim() && matches.length === 0 && (
+                  {phoneQuery.trim() && (matches.length === 0 || addingNew) && (
                     <div className="mt-2">
-                      <label className="block text-xs text-gray-500 mb-1">No match — new customer name</label>
+                      <label className="block text-xs text-gray-500 mb-1">
+                        {matches.length === 0 ? 'No match — new customer name' : 'New patient name'}
+                      </label>
                       <input
                         type="text"
                         value={newCustomerName}
@@ -391,6 +407,17 @@ function updateLine(i, field, value) {
                         placeholder="Full name"
                         className="w-full border rounded px-3 py-2 text-sm"
                       />
+                      {matches.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="xs"
+                          onClick={() => setAddingNew(false)}
+                          className="text-gray-400 mt-1"
+                        >
+                          ← Back to matches
+                        </Button>
+                      )}
                     </div>
                   )}
                 </>
