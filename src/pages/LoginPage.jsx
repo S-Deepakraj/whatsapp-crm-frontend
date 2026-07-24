@@ -20,7 +20,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-xl shadow w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-bold text-gray-800">WhatsApp CRM</h1>
+        <h1 className="text-2xl font-bold text-gray-800">LabFlow</h1>
         <p className="text-sm text-gray-500">Sign in to your account</p>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}

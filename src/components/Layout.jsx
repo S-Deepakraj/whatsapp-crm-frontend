@@ -65,7 +65,7 @@ export default function Layout({ children }) {
               <Link to="/" className="flex items-center gap-2 overflow-hidden group-data-[collapsible=icon]:hidden">
                 <span className="text-lg font-bold text-green-600 shrink-0">🩺</span>
                 <span className="text-lg font-bold text-green-600 truncate">
-                  WhatsApp CRM
+                  LabFlow
                 </span>
               </Link>
               <SidebarTrigger />
@@ -118,7 +118,7 @@ export default function Layout({ children }) {
           {/* Mobile top bar — opens the sidebar as a slide-over sheet */}
           <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b sticky top-0 z-30">
             <SidebarTrigger />
-            <span className="font-bold text-green-600">WhatsApp CRM</span>
+            <span className="font-bold text-green-600">LabFlow</span>
             <div className="w-6" />
           </div>
 

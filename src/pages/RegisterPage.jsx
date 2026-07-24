@@ -32,7 +32,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-xl shadow w-full max-w-sm space-y-4">
         <h1 className="text-2xl font-bold text-gray-800">Create Account</h1>
-        <p className="text-sm text-gray-500">Set up your WhatsApp CRM</p>
+        <p className="text-sm text-gray-500">Set up your LabFlow account</p>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
