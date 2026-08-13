@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchOrders, updateOrderStatus, notifyOrder, uploadReport } from '../store/orderSlice';
+import { fetchPartnerLabs } from '../store/partnerLabSlice';
 import OrderFormModal from '../components/OrderFormModal';
-import CallButton from '../components/CallButton';
 import Pagination from '../components/Pagination';
 import api from '../services/api';
 import { buildWhatsAppLink } from '../utils/whatsapp';
-import { buildOrderConfirmationMessage, buildOrderReminderMessage, buildOrderReportMessage } from '../utils/messageBuilder';
+import { buildOrderConfirmationMessage, buildOrderReminderMessage, buildOrderReportMessage, buildOrderCollectionAckMessage } from '../utils/messageBuilder';
 import { Button } from '../components/ui/button';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -24,6 +27,23 @@ const STATUS_STYLES = {
   closed:        { label: 'Closed',        className: 'bg-gray-100 text-gray-500' },
   cancelled:     { label: 'Cancelled',     className: 'bg-red-100 text-red-600' },
 };
+
+const STATUS_OPTIONS = [
+  { value: 'confirmed',     label: 'Confirmed' },
+  { value: 'assigned',      label: 'Assigned' },
+  { value: 'reached',       label: 'Reached' },
+  { value: 'collected',     label: 'Collected' },
+  { value: 'issue',         label: 'Issue' },
+  { value: 'report_ready',  label: 'Report Ready' },
+  { value: 'closed',        label: 'Closed' },
+  { value: 'cancelled',     label: 'Cancelled' },
+];
+
+const CHANNEL_OPTIONS = [
+  { value: 'home_collection', label: 'Home Collection' },
+  { value: 'walk_in',         label: 'Walk-in' },
+  { value: 'ils',             label: 'Partner Labs (ILS)' },
+];
 
 function todayStr() {
   return new Date().toISOString().split('T')[0];
@@ -41,30 +61,142 @@ const QUICK_RANGES = [
   { label: 'Tomorrow',  days: 1 },
 ];
 
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function formatTime(timeStr) {
+  if (!timeStr) return '—';
+  const [h, m] = timeStr.split(':').map(Number);
+  const period = h < 12 ? 'AM' : 'PM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder, onMarkCollected, onSendCollectionAck, onViewReport, onSendReport, onUploadReport, onClose, onCancel }) {
+  const fileInputRef = useRef(null);
+
+  if (o.status === 'cancelled') return null;
+
+  const canEdit = ['confirmed', 'assigned', 'collected'].includes(o.status);
+  const canConfirmReminder = o.channel === 'home_collection';
+  const canRemind = canConfirmReminder && o.scheduled_date?.slice(0, 10) === todayStr();
+  const canMarkCollected = ['confirmed', 'assigned', 'reached', 'issue'].includes(o.status);
+  const inReportStage = ['collected', 'report_ready', 'closed'].includes(o.status);
+  const canSendCollectionAck = o.channel === 'home_collection' && inReportStage;
+  const canClose = o.status === 'report_ready';
+  const canCancel = o.status === 'confirmed';
+
+  return (
+    <DropdownMenu>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        className="hidden"
+        onChange={(e) => onUploadReport(o, e.target.files[0])}
+      />
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm">Quick Actions ▾</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {o.channel !== 'ils' && (
+          <DropdownMenuItem asChild>
+            <a href={`tel:${o.customer_phone}`}>Call {o.customer_phone}</a>
+          </DropdownMenuItem>
+        )}
+        {canEdit && <DropdownMenuItem onClick={() => onEdit(o)}>Edit order</DropdownMenuItem>}
+
+        {(canConfirmReminder || canMarkCollected || inReportStage) && <DropdownMenuSeparator />}
+
+        {canConfirmReminder && (
+          <DropdownMenuItem onClick={() => onSendConfirmation(o)}>
+            {o.confirmation_sent_at ? '✓ Resend confirmation' : 'Send confirmation'}
+          </DropdownMenuItem>
+        )}
+        {canRemind && (
+          <DropdownMenuItem onClick={() => onSendReminder(o)}>
+            {o.reminder_sent_at ? '✓ Resend reminder' : 'Send reminder'}
+          </DropdownMenuItem>
+        )}
+        {canMarkCollected && (
+          <DropdownMenuItem onClick={() => onMarkCollected(o.id)}>Mark collected</DropdownMenuItem>
+        )}
+        {canSendCollectionAck && (
+          <DropdownMenuItem onClick={() => onSendCollectionAck(o)}>
+            {o.collection_ack_sent_at ? '✓ Resend collection update' : 'Send collection update'}
+          </DropdownMenuItem>
+        )}
+
+        {inReportStage && <DropdownMenuSeparator />}
+
+        {inReportStage && (
+          o.has_report ? (
+            <>
+              <DropdownMenuItem onClick={() => onViewReport(o)}>View report</DropdownMenuItem>
+              {o.channel !== 'ils' && (
+                <DropdownMenuItem onClick={() => onSendReport(o)}>
+                  {o.report_sent_at ? '✓ Resend report' : 'Send report'}
+                </DropdownMenuItem>
+              )}
+            </>
+          ) : (
+            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>Upload report</DropdownMenuItem>
+          )
+        )}
+        {canClose && <DropdownMenuItem onClick={() => onClose(o.id)}>Close order</DropdownMenuItem>}
+
+        {canCancel && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => onCancel(o.id)}>Cancel order</DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export default function OrdersPage() {
   const dispatch = useAppDispatch();
   const { data: orders, total, loading } = useAppSelector((s) => s.orders);
   const settings = useAppSelector((s) => s.settings.data);
+  const partnerLabs = useAppSelector((s) => s.partnerLabs.data);
   const [scheduledDate, setScheduledDate] = useState(todayStr());
   const [showAllDates, setShowAllDates] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  // 'all' | 'home_collection' | 'walk_in' | 'ils' | `lab:<partnerLabId>` —
+  // a specific lab is selectable directly, in one step, instead of picking
+  // "Partner Labs" first and then a second dropdown for which one.
+  const [typeFilter, setTypeFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const pageParams = { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
+  const isLabFilter = typeFilter.startsWith('lab:');
+  const filterParams = {
+    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    ...(isLabFilter ? { channel: 'ils', partnerLabId: typeFilter.slice(4) }
+      : typeFilter !== 'all' ? { channel: typeFilter } : {}),
+  };
 
-  useEffect(() => { setPage(1); }, [scheduledDate, showAllDates]);
+  useEffect(() => { dispatch(fetchPartnerLabs()); }, [dispatch]);
+
+  useEffect(() => { setPage(1); }, [scheduledDate, showAllDates, statusFilter, typeFilter]);
 
   useEffect(() => {
     dispatch(fetchOrders({
       ...(showAllDates ? {} : { scheduledDate }),
+      ...filterParams,
       ...pageParams,
     }));
-  }, [dispatch, scheduledDate, showAllDates, page]);
+  }, [dispatch, scheduledDate, showAllDates, statusFilter, typeFilter, page]);
 
   function refetch() {
-    dispatch(fetchOrders({ ...(showAllDates ? {} : { scheduledDate }), ...pageParams }));
+    dispatch(fetchOrders({ ...(showAllDates ? {} : { scheduledDate }), ...filterParams, ...pageParams }));
   }
 
   function handleCancel(id) {
@@ -81,6 +213,11 @@ export default function OrdersPage() {
   function handleSendReminder(o) {
     window.open(buildWhatsAppLink(o.customer_phone, buildOrderReminderMessage(settings, o)), '_blank');
     dispatch(notifyOrder({ id: o.id, type: 'reminder' }));
+  }
+
+  function handleSendCollectionAck(o) {
+    window.open(buildWhatsAppLink(o.customer_phone, buildOrderCollectionAckMessage(settings, o)), '_blank');
+    dispatch(notifyOrder({ id: o.id, type: 'collection_ack' }));
   }
 
   function handleUploadReport(o, file) {
@@ -117,7 +254,7 @@ export default function OrdersPage() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
+      <div className="flex items-center gap-3 mb-3 flex-wrap">
         <div className="flex gap-1">
           {QUICK_RANGES.map((r) => {
             const rangeDate = shiftDateStr(r.days);
@@ -148,14 +285,41 @@ export default function OrdersPage() {
         </label>
       </div>
 
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border rounded px-3 py-1.5 text-sm"
+        >
+          <option value="all">All statuses</option>
+          {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="border rounded px-3 py-1.5 text-sm"
+        >
+          <option value="all">All order types</option>
+          {CHANNEL_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          {partnerLabs.length > 0 && (
+            <optgroup label="Specific partner lab">
+              {partnerLabs.map((l) => <option key={l.id} value={`lab:${l.id}`}>{l.name}</option>)}
+            </optgroup>
+          )}
+        </select>
+      </div>
+
       {loading ? (
         <p className="text-gray-500 text-sm">Loading…</p>
       ) : orders.length === 0 ? (
-        <p className="text-gray-400 text-sm py-10 text-center">No orders for this date.</p>
+        <p className="text-gray-400 text-sm py-10 text-center">No orders match these filters.</p>
       ) : (
         <>
           <ul className="space-y-3">
-            {orders.map((o) => (
+            {orders.map((o) => {
+              const agreedTotal = o.test_lines.reduce((s, l) => s + parseFloat(l.agreedPrice), 0);
+              const b2bTotal = o.test_lines.reduce((s, l) => s + (parseFloat(l.b2bRate) || 0), 0);
+              return (
               <li key={o.id} className="bg-white rounded-xl shadow-sm border p-4">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="space-y-1">
@@ -196,129 +360,31 @@ export default function OrdersPage() {
                     <p className="text-xs text-gray-600">
                       {o.test_lines.map((l) => l.testName).join(', ')}
                       {' — '}
-                      <span className="font-medium">
-                        ₹{o.test_lines.reduce((s, l) => s + parseFloat(l.agreedPrice), 0).toLocaleString('en-IN')}
-                      </span>
+                      <span className="font-medium">₹{agreedTotal.toLocaleString('en-IN')}</span>
+                      <span className="text-gray-400"> · B2B cost ₹{b2bTotal.toLocaleString('en-IN')}</span>
                     </p>
                     {o.status === 'issue' && o.issue_note && (
                       <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 inline-block">{o.issue_note}</p>
                     )}
                   </div>
 
-                  {o.status !== 'cancelled' && (
-                    <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
-                      {o.channel !== 'ils' && (
-                        <CallButton
-                          phone={o.customer_phone}
-                          className="bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        >
-                          Call
-                        </CallButton>
-                      )}
-                      {['confirmed', 'assigned', 'collected'].includes(o.status) && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => setEditingOrder(o)}
-                        >
-                          Edit
-                        </Button>
-                      )}
-                      {o.channel === 'home_collection' && (
-                        <>
-                          {o.confirmation_sent_at && (
-                            <span className="text-xs text-green-600">✓ Confirmed sent</span>
-                          )}
-                          <Button
-                            size="sm"
-                            onClick={() => handleSendConfirmation(o)}
-                            className="bg-blue-100 text-blue-700 hover:bg-blue-200"
-                          >
-                            {o.confirmation_sent_at ? 'Resend Confirmation' : 'Send Confirmation'}
-                          </Button>
-                        </>
-                      )}
-                      {o.channel === 'home_collection' && o.scheduled_date?.slice(0, 10) === todayStr() && (
-                        <>
-                          {o.reminder_sent_at && (
-                            <span className="text-xs text-green-600">✓ Reminder sent</span>
-                          )}
-                          <Button
-                            size="sm"
-                            onClick={() => handleSendReminder(o)}
-                            className="bg-blue-100 text-blue-700 hover:bg-blue-200"
-                          >
-                            {o.reminder_sent_at ? 'Resend Reminder' : 'Send Reminder'}
-                          </Button>
-                        </>
-                      )}
-                      {['confirmed', 'assigned', 'reached', 'issue'].includes(o.status) && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleMarkCollected(o.id)}
-                          className="bg-purple-100 text-purple-700 hover:bg-purple-200"
-                        >
-                          Mark Collected
-                        </Button>
-                      )}
-                      {['collected', 'report_ready', 'closed'].includes(o.status) && (
-                        o.has_report ? (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => handleViewReport(o)}
-                            >
-                              View Report
-                            </Button>
-                            {o.channel !== 'ils' && (
-                              o.report_sent_at ? (
-                                <span className="text-xs text-green-600">✓ Report sent</span>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleSendReport(o)}
-                                  className="bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                >
-                                  Send Report
-                                </Button>
-                              )
-                            )}
-                          </>
-                        ) : (
-                          <Button asChild size="sm" className="bg-teal-100 text-teal-700 hover:bg-teal-200 cursor-pointer">
-                            <label>
-                              Upload Report
-                              <input
-                                type="file"
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                className="hidden"
-                                onChange={(e) => handleUploadReport(o, e.target.files[0])}
-                              />
-                            </label>
-                          </Button>
-                        )
-                      )}
-                      {o.status === 'report_ready' && (
-                        <Button size="sm" variant="secondary" onClick={() => handleClose(o.id)}>
-                          Close
-                        </Button>
-                      )}
-                      {o.status === 'confirmed' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCancel(o.id)}
-                          className="text-red-400 hover:text-red-600"
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  <OrderActionsMenu
+                    order={o}
+                    onEdit={setEditingOrder}
+                    onSendConfirmation={handleSendConfirmation}
+                    onSendReminder={handleSendReminder}
+                    onMarkCollected={handleMarkCollected}
+                    onSendCollectionAck={handleSendCollectionAck}
+                    onViewReport={handleViewReport}
+                    onSendReport={handleSendReport}
+                    onUploadReport={handleUploadReport}
+                    onClose={handleClose}
+                    onCancel={handleCancel}
+                  />
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
           <div className="mt-4">
             <Pagination
@@ -347,17 +413,4 @@ export default function OrdersPage() {
       )}
     </div>
   );
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function formatTime(timeStr) {
-  if (!timeStr) return '—';
-  const [h, m] = timeStr.split(':').map(Number);
-  const period = h < 12 ? 'AM' : 'PM';
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }

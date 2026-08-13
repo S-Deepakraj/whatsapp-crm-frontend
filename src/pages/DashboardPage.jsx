@@ -6,7 +6,6 @@ import { fetchFollowups, completeFollowup } from '../store/followupSlice';
 import { buildFollowupMessage, buildThankYouMessage } from '../utils/messageBuilder';
 import WhatsAppButton from '../components/WhatsAppButton';
 import { Button } from '../components/ui/button';
-import PartnerLabAnalytics from '../components/PartnerLabAnalytics';
 import TodaySplitPieChart from '../components/TodaySplitPieChart';
 
 const CARDS = [
@@ -21,6 +20,7 @@ const CARDS = [
   {
     key: 'todayVisits',
     label: "Today's Visits",
+    dateScoped: true,
     color: 'text-teal-600',
     bg: 'bg-teal-50',
     icon: '🧾',
@@ -29,6 +29,7 @@ const CARDS = [
   {
     key: 'todayFollowups',
     label: "Today's Follow-Ups",
+    dateScoped: true,
     color: 'text-green-600',
     bg: 'bg-green-50',
     icon: '📋',
@@ -52,43 +53,89 @@ const CARDS = [
   },
 ];
 
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function shiftDateStr(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+const QUICK_RANGES = [
+  { label: 'Yesterday', date: () => shiftDateStr(-1) },
+  { label: 'Today',     date: todayStr },
+  { label: 'Tomorrow',  date: () => shiftDateStr(1) },
+];
+
 export default function DashboardPage() {
   const dispatch = useAppDispatch();
   const { items: todayFollowups, loading: followupsLoading } = useAppSelector((s) => s.followups);
   const settings = useAppSelector((s) => s.settings.data);
 
+  const [viewDate, setViewDate] = useState(todayStr());
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [todayVisits, setTodayVisits] = useState([]);
   const [visitsLoading, setVisitsLoading] = useState(true);
 
-  const today = new Date().toISOString().split('T')[0];
+  const isToday = viewDate === todayStr();
 
   useEffect(() => {
-    api.get('/dashboard/stats')
+    setStats(null);
+    api.get('/dashboard/stats', { params: { date: viewDate } })
       .then((r) => setStats(r.data))
       .catch(() => setError('Could not load stats'));
-  }, []);
+  }, [viewDate]);
 
   useEffect(() => {
-    dispatch(fetchFollowups({ date: today, status: 'pending' }));
-  }, [dispatch, today]);
+    dispatch(fetchFollowups({ date: viewDate, status: 'pending' }));
+  }, [dispatch, viewDate]);
 
   useEffect(() => {
-    api.get('/dashboard/today-visits')
+    setVisitsLoading(true);
+    api.get('/dashboard/today-visits', { params: { date: viewDate } })
       .then((r) => setTodayVisits(r.data))
       .finally(() => setVisitsLoading(false));
-  }, []);
+  }, [viewDate]);
 
-  const todayLabel = new Date().toLocaleDateString('en-IN', {
+  const viewDateLabel = new Date(viewDate).toLocaleDateString('en-IN', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
+  const dayLabel = isToday ? 'Today' : new Date(viewDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
   return (
     <div className="p-4 md:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-sm text-gray-400 mt-1">{todayLabel}</p>
+        <p className="text-sm text-gray-400 mt-1">{viewDateLabel}</p>
+      </div>
+
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <div className="flex gap-1">
+          {QUICK_RANGES.map((r) => {
+            const rangeDate = r.date();
+            const active = viewDate === rangeDate;
+            return (
+              <Button
+                key={r.label}
+                type="button"
+                size="sm"
+                variant={active ? 'default' : 'outline'}
+                onClick={() => setViewDate(rangeDate)}
+              >
+                {r.label}
+              </Button>
+            );
+          })}
+        </div>
+        <input
+          type="date"
+          value={viewDate}
+          onChange={(e) => setViewDate(e.target.value)}
+          className="border rounded px-3 py-1.5 text-sm"
+        />
       </div>
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
@@ -106,7 +153,9 @@ export default function DashboardPage() {
             <p className={`text-4xl font-bold ${card.color}`}>
               {stats ? stats[card.key] : '—'}
             </p>
-            <p className="text-sm text-gray-600 mt-1">{card.label}</p>
+            <p className="text-sm text-gray-600 mt-1">
+              {card.dateScoped ? card.label.replace("Today's", `${dayLabel}'s`) : card.label}
+            </p>
           </Link>
         ))}
       </div>
@@ -119,7 +168,7 @@ export default function DashboardPage() {
           <p className="text-4xl font-bold text-green-700">
             {stats ? `₹${Number(stats.todayTotalRevenue).toLocaleString('en-IN')}` : '—'}
           </p>
-          <p className="text-sm text-gray-600 mt-1">Total Amount Collected Today</p>
+          <p className="text-sm text-gray-600 mt-1">Total Amount Collected — {dayLabel}</p>
         </div>
         <div className="rounded-xl p-5 bg-amber-50">
           <div className="flex items-center justify-between mb-3">
@@ -128,7 +177,7 @@ export default function DashboardPage() {
           <p className="text-4xl font-bold text-amber-700">
             {stats ? `₹${Number(stats.todayCostB2B).toLocaleString('en-IN')}` : '—'}
           </p>
-          <p className="text-sm text-gray-600 mt-1">Total Cost (B2B) Today</p>
+          <p className="text-sm text-gray-600 mt-1">Total Cost (B2B) — {dayLabel}</p>
         </div>
       </div>
 
@@ -151,7 +200,7 @@ export default function DashboardPage() {
 
       <div className="mt-8">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-800">Today's Follow-Ups</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{dayLabel}'s Follow-Ups</h2>
           <Link to="/followups" className="text-sm text-green-600 hover:underline">View all</Link>
         </div>
 
@@ -161,7 +210,7 @@ export default function DashboardPage() {
           </div>
         ) : todayFollowups.length === 0 ? (
           <p className="text-gray-400 text-sm py-10 text-center bg-white rounded-xl border">
-            No follow-ups due today.
+            No follow-ups due {isToday ? 'today' : 'on this date'}.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -198,7 +247,7 @@ export default function DashboardPage() {
 
       <div className="mt-8">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-800">Today's Visits</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{dayLabel}'s Visits</h2>
           {stats?.todayVisitsRevenue > 0 && (
             <span className="text-sm text-gray-500">
               ₹{Number(stats.todayVisitsRevenue).toLocaleString('en-IN')} collected
@@ -212,7 +261,7 @@ export default function DashboardPage() {
           </div>
         ) : todayVisits.length === 0 ? (
           <p className="text-gray-400 text-sm py-10 text-center bg-white rounded-xl border">
-            No visits logged today yet.
+            No visits logged {isToday ? 'today yet' : 'on this date'}.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -244,8 +293,6 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
-
-      <PartnerLabAnalytics />
     </div>
   );
 }

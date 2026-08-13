@@ -61,8 +61,11 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
 
   const [collectionAddress, setCollectionAddress] = useState(order?.collection_address || '');
   const [scheduledDate, setScheduledDate] = useState(order?.scheduled_date?.slice(0, 10) || tomorrow());
-  const [slotStart, setSlotStart] = useState(order?.slot_start || SLOT_PRESETS[0].start);
-  const [slotEnd, setSlotEnd] = useState(order?.slot_end || SLOT_PRESETS[0].end);
+  // order.slot_start/slot_end come back as "HH:mm:ss" (Postgres TIME) —
+  // trim to "HH:mm" to match what the backend's time validation expects,
+  // otherwise an untouched pre-filled value fails validation on save.
+  const [slotStart, setSlotStart] = useState(order?.slot_start?.slice(0, 5) || SLOT_PRESETS[0].start);
+  const [slotEnd, setSlotEnd] = useState(order?.slot_end?.slice(0, 5) || SLOT_PRESETS[0].end);
   const [notes, setNotes] = useState(order?.notes || '');
   const [lines, setLines] = useState(
     order?.test_lines?.length

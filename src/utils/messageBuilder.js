@@ -56,6 +56,13 @@ export function buildOrderReminderMessage(settings, order) {
     + `Please be available at the address. Thank you!`;
 }
 
+export function buildOrderCollectionAckMessage(settings, order) {
+  const businessName = settings?.businessName || 'us';
+  const base = `Hi ${order.customer_name}, your home collection with ${businessName} is *complete* ✅. We'll share your report shortly.\n\n`
+    + `We'd love to hear your feedback!`;
+  return settings?.googleReviewUrl ? `${base}\n${settings.googleReviewUrl}` : base;
+}
+
 export function buildOrderReportMessage(settings, order, reportUrl) {
   const businessName = settings?.businessName || 'us';
   return `Hi ${order.customer_name}, your report from ${businessName} is ready.\n\n`

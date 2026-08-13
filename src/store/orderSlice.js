@@ -3,8 +3,8 @@ import api from '../services/api';
 
 export const fetchOrders = createAsyncThunk(
   'orders/fetchAll',
-  async ({ scheduledDate, status, limit = 20, offset = 0 } = {}) => {
-    const { data } = await api.get('/orders', { params: { scheduledDate, status, limit, offset } });
+  async ({ scheduledDate, status, channel, partnerLabId, limit = 20, offset = 0 } = {}) => {
+    const { data } = await api.get('/orders', { params: { scheduledDate, status, channel, partnerLabId, limit, offset } });
     return data; // { data: [], total: N }
   }
 );
