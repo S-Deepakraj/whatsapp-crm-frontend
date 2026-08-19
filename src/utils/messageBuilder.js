@@ -70,3 +70,14 @@ export function buildOrderReportMessage(settings, order, reportUrl) {
     + `Download here: ${reportUrl}\n\n`
     + `Thank you for choosing us!`;
 }
+
+export function buildSettlementRequestMessage(settings, labName, dateStr, orders, total) {
+  const businessName = settings?.businessName || 'us';
+  const lines = orders
+    .map((o, i) => `${i + 1}. ${o.patientName} — ₹${parseFloat(o.expectedAmount).toLocaleString('en-IN')}`)
+    .join('\n');
+  return `Hi ${labName},\n\n`
+    + `Today's sample summary (${formatOrderDate(dateStr)}):\n${lines}\n\n`
+    + `Total payable: ₹${parseFloat(total).toLocaleString('en-IN')}\n\n`
+    + `Please confirm and settle at your convenience.\n— ${businessName}`;
+}

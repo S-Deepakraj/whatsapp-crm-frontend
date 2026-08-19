@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchOrders, updateOrderStatus, notifyOrder, uploadReport } from '../store/orderSlice';
 import { fetchPartnerLabs } from '../store/partnerLabSlice';
 import OrderFormModal from '../components/OrderFormModal';
+import AddPaymentModal from '../components/AddPaymentModal';
 import Pagination from '../components/Pagination';
 import api from '../services/api';
 import { buildWhatsAppLink } from '../utils/whatsapp';
@@ -74,7 +75,7 @@ function formatTime(timeStr) {
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder, onMarkCollected, onSendCollectionAck, onViewReport, onSendReport, onUploadReport, onClose, onCancel }) {
+function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder, onMarkCollected, onSendCollectionAck, onViewReport, onSendReport, onUploadReport, onClose, onCancel, onAddPayment }) {
   const fileInputRef = useRef(null);
 
   if (o.status === 'cancelled') return null;
@@ -87,6 +88,9 @@ function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder
   const canSendCollectionAck = o.channel === 'home_collection' && inReportStage;
   const canClose = o.status === 'report_ready';
   const canCancel = o.status === 'confirmed';
+  // ILS orders are paid via lab settlements, not per-order — same
+  // constraint the backend enforces on payment creation.
+  const canAddPayment = o.channel !== 'ils';
 
   return (
     <DropdownMenu>
@@ -107,6 +111,7 @@ function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder
           </DropdownMenuItem>
         )}
         {canEdit && <DropdownMenuItem onClick={() => onEdit(o)}>Edit order</DropdownMenuItem>}
+        {canAddPayment && <DropdownMenuItem onClick={() => onAddPayment(o)}>Add payment</DropdownMenuItem>}
 
         {(canConfirmReminder || canMarkCollected || inReportStage) && <DropdownMenuSeparator />}
 
@@ -173,6 +178,7 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
+  const [paymentOrder, setPaymentOrder] = useState(null);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const pageParams = { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
@@ -247,6 +253,7 @@ export default function OrdersPage() {
 
   return (
     <div className="p-4 md:p-6">
+      <div className="sticky top-0 z-10 -mx-4 -mt-4 px-4 pt-4 md:-mx-6 md:-mt-6 md:px-6 md:pt-6 pb-3 bg-gray-50">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">Orders</h1>
         <Button onClick={() => setShowModal(true)}>
@@ -307,6 +314,7 @@ export default function OrdersPage() {
             </optgroup>
           )}
         </select>
+      </div>
       </div>
 
       {loading ? (
@@ -380,6 +388,7 @@ export default function OrdersPage() {
                     onUploadReport={handleUploadReport}
                     onClose={handleClose}
                     onCancel={handleCancel}
+                    onAddPayment={setPaymentOrder}
                   />
                 </div>
               </li>
@@ -409,6 +418,13 @@ export default function OrdersPage() {
           order={editingOrder}
           onClose={() => setEditingOrder(null)}
           onCreated={refetch}
+        />
+      )}
+
+      {paymentOrder && (
+        <AddPaymentModal
+          order={paymentOrder}
+          onClose={() => setPaymentOrder(null)}
         />
       )}
     </div>

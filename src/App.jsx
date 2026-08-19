@@ -19,6 +19,8 @@ import TechniciansPage from './pages/TechniciansPage';
 import TechnicianStatusPage from './pages/TechnicianStatusPage';
 import PartnerLabsPage from './pages/PartnerLabsPage';
 import PartnerLabRatesPage from './pages/PartnerLabRatesPage';
+import AccountsPage from './pages/AccountsPage';
+import ExpenseCategoriesPage from './pages/ExpenseCategoriesPage';
 
 function ProtectedRoute({ children }) {
   const token = useAppSelector((s) => s.auth.token);
@@ -47,6 +49,8 @@ export default function App() {
       <Route path="/partner-labs" element={<ProtectedRoute><PartnerLabsPage /></ProtectedRoute>} />
       <Route path="/partner-labs/:id/rates" element={<ProtectedRoute><PartnerLabRatesPage /></ProtectedRoute>} />
       <Route path="/test-catalog" element={<ProtectedRoute><TestCatalogPage /></ProtectedRoute>} />
+      <Route path="/accounts" element={<ProtectedRoute><AccountsPage /></ProtectedRoute>} />
+      <Route path="/finance/expense-categories" element={<ProtectedRoute><ExpenseCategoriesPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     </Routes>
   );

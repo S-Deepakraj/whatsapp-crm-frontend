@@ -8,6 +8,12 @@ import testCatalogReducer from './testCatalogSlice';
 import orderReducer       from './orderSlice';
 import technicianReducer  from './technicianSlice';
 import partnerLabReducer  from './partnerLabSlice';
+import paymentReducer     from './paymentSlice';
+import settlementReducer  from './settlementSlice';
+import expenseReducer     from './expenseSlice';
+import expenseCategoryReducer from './expenseCategorySlice';
+import billingAdjustmentReducer from './billingAdjustmentSlice';
+import reportReducer      from './reportSlice';
 
 export const store = configureStore({
   reducer: {
@@ -20,5 +26,11 @@ export const store = configureStore({
     orders:      orderReducer,
     technicians: technicianReducer,
     partnerLabs: partnerLabReducer,
+    payments:    paymentReducer,
+    settlements: settlementReducer,
+    expenses:    expenseReducer,
+    expenseCategories: expenseCategoryReducer,
+    billingAdjustments: billingAdjustmentReducer,
+    reports:     reportReducer,
   },
 });

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ClipboardList, CalendarDays, Wrench, FlaskConical, Bell, Settings as SettingsIcon, LogOut, Building2,
+  Landmark,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { logout, resendVerification, fetchCurrentUser } from '../store/authSlice';
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/partner-labs', label: 'Partner Labs', icon: Building2 },
   { to: '/test-catalog', label: 'Test Catalog', icon: FlaskConical },
   { to: '/followups',    label: 'Follow-Ups',   icon: Bell },
+  { to: '/accounts',      label: 'Accounts',      icon: Landmark },
   { to: '/settings',     label: 'Settings',     icon: SettingsIcon },
 ];
 

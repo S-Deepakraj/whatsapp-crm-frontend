@@ -56,6 +56,7 @@ export default function CustomersPage() {
 
   return (
     <div className="p-4 md:p-6">
+      <div className="sticky top-0 z-10 -mx-4 -mt-4 px-4 pt-4 md:-mx-6 md:-mt-6 md:px-6 md:pt-6 pb-3 bg-gray-50">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">Customers</h1>
         <div className="flex items-center gap-2">
@@ -74,6 +75,7 @@ export default function CustomersPage() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
+      </div>
 
       {loading ? (
         <p className="text-gray-500 text-sm">Loading…</p>
