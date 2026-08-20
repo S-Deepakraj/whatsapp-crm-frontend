@@ -51,6 +51,14 @@ export const notifyOrder = createAsyncThunk(
   }
 );
 
+export const deleteOrder = createAsyncThunk(
+  'orders/delete',
+  async (id) => {
+    await api.delete(`/orders/${id}`);
+    return id;
+  }
+);
+
 export const uploadReport = createAsyncThunk(
   'orders/uploadReport',
   async ({ id, file }) => {
@@ -100,6 +108,10 @@ const orderSlice = createSlice({
       .addCase(uploadReport.fulfilled, (state, action) => {
         const idx = state.data.findIndex((o) => o.id === action.payload.id);
         if (idx !== -1) state.data[idx] = action.payload;
+      })
+      .addCase(deleteOrder.fulfilled, (state, action) => {
+        state.data = state.data.filter((o) => o.id !== action.payload);
+        state.total -= 1;
       });
   },
 });

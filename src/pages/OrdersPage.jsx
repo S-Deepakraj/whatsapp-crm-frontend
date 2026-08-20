@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { fetchOrders, updateOrderStatus, notifyOrder, uploadReport } from '../store/orderSlice';
+import { fetchOrders, updateOrderStatus, notifyOrder, uploadReport, deleteOrder } from '../store/orderSlice';
 import { fetchPartnerLabs } from '../store/partnerLabSlice';
 import OrderFormModal from '../components/OrderFormModal';
 import AddPaymentModal from '../components/AddPaymentModal';
@@ -75,10 +75,23 @@ function formatTime(timeStr) {
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder, onMarkCollected, onSendCollectionAck, onViewReport, onSendReport, onUploadReport, onClose, onCancel, onAddPayment }) {
+function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder, onMarkCollected, onSendCollectionAck, onViewReport, onSendReport, onUploadReport, onClose, onCancel, onAddPayment, onDelete }) {
   const fileInputRef = useRef(null);
 
-  if (o.status === 'cancelled') return null;
+  // A cancelled order has nothing left to do except get deleted if it's
+  // no longer wanted — every other action assumes an active order.
+  if (o.status === 'cancelled') {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm">Quick Actions ▾</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem variant="destructive" onClick={() => onDelete(o)}>Delete order</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
   const canEdit = ['confirmed', 'assigned', 'collected'].includes(o.status);
   const canConfirmReminder = o.channel === 'home_collection';
@@ -152,12 +165,11 @@ function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder
         )}
         {canClose && <DropdownMenuItem onClick={() => onClose(o.id)}>Close order</DropdownMenuItem>}
 
+        <DropdownMenuSeparator />
         {canCancel && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => onCancel(o.id)}>Cancel order</DropdownMenuItem>
-          </>
+          <DropdownMenuItem variant="destructive" onClick={() => onCancel(o.id)}>Cancel order</DropdownMenuItem>
         )}
+        <DropdownMenuItem variant="destructive" onClick={() => onDelete(o)}>Delete order</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -210,6 +222,13 @@ export default function OrdersPage() {
   function handleCancel(id) {
     if (window.confirm('Cancel this order?')) {
       dispatch(updateOrderStatus({ id, status: 'cancelled' }));
+    }
+  }
+
+  function handleDelete(o) {
+    const name = o.channel === 'ils' ? o.patient_name : o.customer_name;
+    if (window.confirm(`Permanently delete this order for ${name}? This cannot be undone.`)) {
+      dispatch(deleteOrder(o.id));
     }
   }
 
@@ -400,6 +419,7 @@ export default function OrdersPage() {
                     onClose={handleClose}
                     onCancel={handleCancel}
                     onAddPayment={setPaymentOrder}
+                    onDelete={handleDelete}
                   />
                 </div>
               </li>
