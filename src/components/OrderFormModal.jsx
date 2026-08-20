@@ -69,7 +69,10 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
   const [notes, setNotes] = useState(order?.notes || '');
   const [lines, setLines] = useState(
     order?.test_lines?.length
-      ? order.test_lines.map((l) => ({ testCatalogId: l.testCatalogId, testLabel: l.testName, query: '', agreedPrice: String(l.agreedPrice) }))
+      // agreedPrice is null for a technician-created order awaiting
+      // pricing — String(null) would render the literal text "null" in
+      // the input, so that case is left blank instead.
+      ? order.test_lines.map((l) => ({ testCatalogId: l.testCatalogId, testLabel: l.testName, query: '', agreedPrice: l.agreedPrice != null ? String(l.agreedPrice) : '' }))
       : [{ ...EMPTY_LINE }]
   );
 

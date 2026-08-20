@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ClipboardList, CalendarDays, Wrench, FlaskConical, Bell, Settings as SettingsIcon, LogOut, Building2,
-  Landmark,
+  Landmark, KeyRound,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { logout, resendVerification, fetchCurrentUser } from '../store/authSlice';
 import { fetchSettings } from '../store/settingsSlice';
+import ChangePasswordModal from './ChangePasswordModal';
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton,
   SidebarMenuItem, SidebarProvider, SidebarRail, SidebarTrigger,
@@ -14,7 +15,7 @@ import {
 import { TooltipProvider } from './ui/tooltip';
 import { Button } from './ui/button';
 
-const navItems = [
+const OWNER_NAV_ITEMS = [
   { to: '/',             label: 'Dashboard',    icon: LayoutDashboard, end: true },
   { to: '/customers',    label: 'Customers',    icon: Users },
   { to: '/orders',       label: 'Orders',       icon: ClipboardList },
@@ -27,19 +28,28 @@ const navItems = [
   { to: '/settings',     label: 'Settings',     icon: SettingsIcon },
 ];
 
+// A technician's whole app is one page — everything else above is owner-only.
+const TECHNICIAN_NAV_ITEMS = [
+  { to: '/my-orders', label: 'My Orders', icon: ClipboardList, end: true },
+];
+
 export default function Layout({ children }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [resendStatus, setResendStatus] = useState('idle'); // idle | sending | sent
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const settingsLoaded = useAppSelector((s) => Boolean(s.settings.data));
   const user = useAppSelector((s) => s.auth.user);
+  const isTechnician = user?.role === 'technician';
   const emailVerified = user?.emailVerified;
+  const navItems = isTechnician ? TECHNICIAN_NAV_ITEMS : OWNER_NAV_ITEMS;
 
   useEffect(() => {
-    if (!settingsLoaded) dispatch(fetchSettings());
-  }, [dispatch, settingsLoaded]);
+    // /settings is owner-only — a technician account would just 403.
+    if (!settingsLoaded && !isTechnician) dispatch(fetchSettings());
+  }, [dispatch, settingsLoaded, isTechnician]);
 
   useEffect(() => {
     if (!user) dispatch(fetchCurrentUser());
@@ -56,7 +66,8 @@ export default function Layout({ children }) {
     setResendStatus('sent');
   }
 
-  const showVerifyBanner = emailVerified === false && !bannerDismissed;
+  // Technician accounts have no email/verification concept at all.
+  const showVerifyBanner = !isTechnician && emailVerified === false && !bannerDismissed;
 
   return (
     <TooltipProvider>
@@ -64,7 +75,7 @@ export default function Layout({ children }) {
         <Sidebar collapsible="icon">
           <SidebarHeader>
             <div className="flex items-center justify-between px-2 py-1 group-data-[collapsible=icon]:justify-center">
-              <Link to="/" className="flex items-center gap-2 overflow-hidden group-data-[collapsible=icon]:hidden">
+              <Link to={isTechnician ? '/my-orders' : '/'} className="flex items-center gap-2 overflow-hidden group-data-[collapsible=icon]:hidden">
                 <span className="text-lg font-bold text-green-600 shrink-0">🩺</span>
                 <span className="text-lg font-bold text-green-600 truncate">
                   LabFlow
@@ -96,11 +107,19 @@ export default function Layout({ children }) {
           <SidebarFooter>
             {user && (
               <div className="px-3 py-2 group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium text-gray-800 truncate">{user.businessName}</p>
-                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                <p className="text-sm font-medium text-gray-800 truncate">{isTechnician ? user.name : user.businessName}</p>
+                <p className="text-xs text-gray-400 truncate">{isTechnician ? user.phone : user.email}</p>
               </div>
             )}
             <SidebarMenu>
+              {isTechnician && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={() => setShowChangePassword(true)} tooltip="Change Password">
+                    <KeyRound />
+                    <span>Change Password</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={handleLogout}
@@ -155,6 +174,8 @@ export default function Layout({ children }) {
           </div>
         </SidebarInset>
       </SidebarProvider>
+
+      {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}
     </TooltipProvider>
   );
 }

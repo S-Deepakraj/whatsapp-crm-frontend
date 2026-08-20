@@ -175,6 +175,7 @@ export default function OrdersPage() {
   // a specific lab is selectable directly, in one step, instead of picking
   // "Partner Labs" first and then a second dropdown for which one.
   const [typeFilter, setTypeFilter] = useState('all');
+  const [needsPricingOnly, setNeedsPricingOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
@@ -187,11 +188,12 @@ export default function OrdersPage() {
     ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
     ...(isLabFilter ? { channel: 'ils', partnerLabId: typeFilter.slice(4) }
       : typeFilter !== 'all' ? { channel: typeFilter } : {}),
+    ...(needsPricingOnly ? { needsPricing: true } : {}),
   };
 
   useEffect(() => { dispatch(fetchPartnerLabs()); }, [dispatch]);
 
-  useEffect(() => { setPage(1); }, [scheduledDate, showAllDates, statusFilter, typeFilter]);
+  useEffect(() => { setPage(1); }, [scheduledDate, showAllDates, statusFilter, typeFilter, needsPricingOnly]);
 
   useEffect(() => {
     dispatch(fetchOrders({
@@ -199,7 +201,7 @@ export default function OrdersPage() {
       ...filterParams,
       ...pageParams,
     }));
-  }, [dispatch, scheduledDate, showAllDates, statusFilter, typeFilter, page]);
+  }, [dispatch, scheduledDate, showAllDates, statusFilter, typeFilter, needsPricingOnly, page]);
 
   function refetch() {
     dispatch(fetchOrders({ ...(showAllDates ? {} : { scheduledDate }), ...filterParams, ...pageParams }));
@@ -314,6 +316,10 @@ export default function OrdersPage() {
             </optgroup>
           )}
         </select>
+        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+          <input type="checkbox" checked={needsPricingOnly} onChange={(e) => setNeedsPricingOnly(e.target.checked)} />
+          Needs Pricing only
+        </label>
       </div>
       </div>
 
@@ -325,7 +331,8 @@ export default function OrdersPage() {
         <>
           <ul className="space-y-3">
             {orders.map((o) => {
-              const agreedTotal = o.test_lines.reduce((s, l) => s + parseFloat(l.agreedPrice), 0);
+              const needsPricing = o.test_lines.some((l) => l.agreedPrice == null);
+              const agreedTotal = needsPricing ? null : o.test_lines.reduce((s, l) => s + parseFloat(l.agreedPrice), 0);
               const b2bTotal = o.test_lines.reduce((s, l) => s + (parseFloat(l.b2bRate) || 0), 0);
               return (
               <li key={o.id} className="bg-white rounded-xl shadow-sm border p-4">
@@ -368,7 +375,11 @@ export default function OrdersPage() {
                     <p className="text-xs text-gray-600">
                       {o.test_lines.map((l) => l.testName).join(', ')}
                       {' — '}
-                      <span className="font-medium">₹{agreedTotal.toLocaleString('en-IN')}</span>
+                      {needsPricing ? (
+                        <span className="font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Needs Pricing</span>
+                      ) : (
+                        <span className="font-medium">₹{agreedTotal.toLocaleString('en-IN')}</span>
+                      )}
                       <span className="text-gray-400"> · B2B cost ₹{b2bTotal.toLocaleString('en-IN')}</span>
                     </p>
                     {o.status === 'issue' && o.issue_note && (

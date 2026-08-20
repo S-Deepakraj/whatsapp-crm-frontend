@@ -16,6 +16,21 @@ export const updateTechnician = createAsyncThunk('technicians/update', async ({ 
   return data;
 });
 
+export const enableAccess = createAsyncThunk('technicians/enableAccess', async (id) => {
+  const { data } = await api.post(`/technicians/${id}/access`);
+  return { id, ...data };
+});
+
+export const resetAccess = createAsyncThunk('technicians/resetAccess', async (id) => {
+  const { data } = await api.patch(`/technicians/${id}/access`);
+  return { id, ...data };
+});
+
+export const revokeAccess = createAsyncThunk('technicians/revokeAccess', async (id) => {
+  await api.delete(`/technicians/${id}/access`);
+  return { id };
+});
+
 const technicianSlice = createSlice({
   name: 'technicians',
   initialState: { data: [], loading: false },
@@ -34,6 +49,14 @@ const technicianSlice = createSlice({
       .addCase(updateTechnician.fulfilled, (state, action) => {
         const idx = state.data.findIndex((t) => t.id === action.payload.id);
         if (idx !== -1) state.data[idx] = action.payload;
+      })
+      .addCase(enableAccess.fulfilled, (state, action) => {
+        const idx = state.data.findIndex((t) => t.id === action.payload.id);
+        if (idx !== -1) { state.data[idx].has_access = true; state.data[idx].login_phone = action.payload.phone; }
+      })
+      .addCase(revokeAccess.fulfilled, (state, action) => {
+        const idx = state.data.findIndex((t) => t.id === action.payload.id);
+        if (idx !== -1) { state.data[idx].has_access = false; state.data[idx].login_phone = null; }
       });
   },
 });

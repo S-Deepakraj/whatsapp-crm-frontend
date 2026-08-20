@@ -3,14 +3,19 @@ import api from '../services/api';
 
 export const fetchOrders = createAsyncThunk(
   'orders/fetchAll',
-  async ({ scheduledDate, status, channel, partnerLabId, limit = 20, offset = 0 } = {}) => {
-    const { data } = await api.get('/orders', { params: { scheduledDate, status, channel, partnerLabId, limit, offset } });
+  async ({ scheduledDate, status, channel, partnerLabId, needsPricing, limit = 20, offset = 0 } = {}) => {
+    const { data } = await api.get('/orders', { params: { scheduledDate, status, channel, partnerLabId, needsPricing, limit, offset } });
     return data; // { data: [], total: N }
   }
 );
 
 export const createOrder = createAsyncThunk('orders/create', async (payload) => {
   const { data } = await api.post('/orders', payload);
+  return data;
+});
+
+export const createSelfCollectedOrder = createAsyncThunk('orders/createSelfCollected', async (payload) => {
+  const { data } = await api.post('/orders/self-collected', payload);
   return data;
 });
 
@@ -24,8 +29,8 @@ export const updateOrder = createAsyncThunk(
 
 export const updateOrderStatus = createAsyncThunk(
   'orders/updateStatus',
-  async ({ id, status }) => {
-    const { data } = await api.patch(`/orders/${id}/status`, { status });
+  async ({ id, status, note }) => {
+    const { data } = await api.patch(`/orders/${id}/status`, { status, note });
     return data;
   }
 );
@@ -69,6 +74,10 @@ const orderSlice = createSlice({
         state.total   = action.payload.total;
       })
       .addCase(createOrder.fulfilled, (state, action) => {
+        state.data.unshift(action.payload);
+        state.total += 1;
+      })
+      .addCase(createSelfCollectedOrder.fulfilled, (state, action) => {
         state.data.unshift(action.payload);
         state.total += 1;
       })

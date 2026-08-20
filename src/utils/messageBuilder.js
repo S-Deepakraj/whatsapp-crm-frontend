@@ -71,6 +71,17 @@ export function buildOrderReportMessage(settings, order, reportUrl) {
     + `Thank you for choosing us!`;
 }
 
+export function buildTechnicianAccessMessage(settings, technicianName, phone, password) {
+  const businessName = settings?.businessName || 'us';
+  const appUrl = window.location.origin;
+  return `Hi ${technicianName},\n\n`
+    + `You now have app access for ${businessName}. Log in as "Technician":\n\n`
+    + `Link: ${appUrl}/login\n`
+    + `Phone: ${phone}\n`
+    + `Password: ${password}\n\n`
+    + `Please change your password after logging in.`;
+}
+
 export function buildSettlementRequestMessage(settings, labName, dateStr, orders, total) {
   const businessName = settings?.businessName || 'us';
   const lines = orders
