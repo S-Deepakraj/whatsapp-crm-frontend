@@ -11,6 +11,11 @@ export const createPayment = createAsyncThunk('payments/create', async (payload)
   return data;
 });
 
+export const deletePayment = createAsyncThunk('payments/delete', async (id) => {
+  await api.delete(`/payments/${id}`);
+  return id;
+});
+
 const paymentSlice = createSlice({
   name: 'payments',
   initialState: { data: [], total: 0, loading: false },
@@ -26,6 +31,10 @@ const paymentSlice = createSlice({
       .addCase(createPayment.fulfilled, (state, action) => {
         state.data.unshift(action.payload);
         state.total += 1;
+      })
+      .addCase(deletePayment.fulfilled, (state, action) => {
+        state.data = state.data.filter((p) => p.id !== action.payload);
+        state.total -= 1;
       });
   },
 });

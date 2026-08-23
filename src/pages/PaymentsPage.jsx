@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { fetchPayments, createPayment } from '../store/paymentSlice';
+import { fetchPayments, createPayment, deletePayment } from '../store/paymentSlice';
 import { Button } from '../components/ui/button';
 
 const METHOD_LABEL = { cash: 'Cash', upi: 'UPI', card: 'Card', other: 'Other' };
@@ -23,6 +23,7 @@ export default function PaymentsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchPayments({ ...(startDate ? { startDate } : {}), ...(endDate ? { endDate } : {}) }));
@@ -46,6 +47,13 @@ export default function PaymentsPage() {
     } else {
       setError(result.error?.message || 'Failed to record payment.');
     }
+  }
+
+  async function handleDelete(p) {
+    if (!window.confirm(`Delete this ₹${parseFloat(p.amount).toLocaleString('en-IN')} payment for order #${p.order_id}? This cannot be undone.`)) return;
+    setDeletingId(p.id);
+    await dispatch(deletePayment(p.id));
+    setDeletingId(null);
   }
 
   return (
@@ -132,6 +140,7 @@ export default function PaymentsPage() {
                 <th className="px-4 py-2 font-medium">Amount</th>
                 <th className="px-4 py-2 font-medium">Method</th>
                 <th className="px-4 py-2 font-medium">Notes</th>
+                <th className="px-4 py-2 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -143,6 +152,16 @@ export default function PaymentsPage() {
                   <td className="px-4 py-2 font-medium">₹{parseFloat(p.amount).toLocaleString('en-IN')}</td>
                   <td className="px-4 py-2 text-gray-500">{METHOD_LABEL[p.method]}</td>
                   <td className="px-4 py-2 text-gray-400">{p.notes || '—'}</td>
+                  <td className="px-4 py-2 text-right">
+                    <Button
+                      variant="link" size="xs"
+                      onClick={() => handleDelete(p)}
+                      disabled={deletingId === p.id}
+                      className="text-red-500"
+                    >
+                      {deletingId === p.id ? 'Deleting…' : 'Delete'}
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
