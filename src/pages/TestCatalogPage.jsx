@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchTests, updateTest } from '../store/testCatalogSlice';
 import { Button } from '../components/ui/button';
@@ -71,10 +72,14 @@ export default function TestCatalogPage() {
 
   return (
     <div className="p-4 md:p-6">
-      <h1 className="text-2xl font-bold mb-4">Test Catalog</h1>
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <h1 className="text-2xl font-bold">Test Catalog</h1>
+        <Link to="/test-catalog/cost-overrides" className="text-sm text-blue-600 hover:underline">Special / Weekend Rates</Link>
+      </div>
       <p className="text-sm text-gray-500 mb-5 max-w-2xl">
         MRP and B2B rate are reference prices only — the price actually billed for an order is agreed on the call and entered per order.
-        Tests are seeded from the price-list spreadsheet; edit or deactivate them here.
+        Tests are seeded from the price-list spreadsheet; edit or deactivate them here. When the processing lab runs a temporary promo on
+        specific days, use "Special / Weekend Rates" instead of editing the B2B rate directly.
       </p>
 
       <div className="flex items-center gap-3 mb-4 flex-wrap">

@@ -14,6 +14,7 @@ import FollowupsPage from './pages/FollowupsPage';
 import SettingsPage from './pages/SettingsPage';
 import OrdersPage from './pages/OrdersPage';
 import TestCatalogPage from './pages/TestCatalogPage';
+import TestCostOverridesPage from './pages/TestCostOverridesPage';
 import DayViewPage from './pages/DayViewPage';
 import TechniciansPage from './pages/TechniciansPage';
 import TechnicianStatusPage from './pages/TechnicianStatusPage';
@@ -62,6 +63,7 @@ export default function App() {
       <Route path="/partner-labs" element={<OwnerRoute><PartnerLabsPage /></OwnerRoute>} />
       <Route path="/partner-labs/:id/rates" element={<OwnerRoute><PartnerLabRatesPage /></OwnerRoute>} />
       <Route path="/test-catalog" element={<OwnerRoute><TestCatalogPage /></OwnerRoute>} />
+      <Route path="/test-catalog/cost-overrides" element={<OwnerRoute><TestCostOverridesPage /></OwnerRoute>} />
       <Route path="/accounts" element={<OwnerRoute><AccountsPage /></OwnerRoute>} />
       <Route path="/finance/expense-categories" element={<OwnerRoute><ExpenseCategoriesPage /></OwnerRoute>} />
       <Route path="/settings" element={<OwnerRoute><SettingsPage /></OwnerRoute>} />
