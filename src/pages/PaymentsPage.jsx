@@ -9,6 +9,17 @@ function today() {
   return new Date().toISOString().split('T')[0];
 }
 
+function shiftDateStr(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+const QUICK_RANGES = [
+  { label: 'Yesterday', days: -1 },
+  { label: 'Today',     days: 0 },
+];
+
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
@@ -18,16 +29,21 @@ const EMPTY_FORM = { orderId: '', amount: '', paidAt: today(), method: 'cash', n
 export default function PaymentsPage() {
   const dispatch = useAppDispatch();
   const { data: payments, loading } = useAppSelector((s) => s.payments);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(today());
+  const [showAllDates, setShowAllDates] = useState(false);
+  const [methodFilter, setMethodFilter] = useState('all');
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchPayments({ ...(startDate ? { startDate } : {}), ...(endDate ? { endDate } : {}) }));
-  }, [dispatch, startDate, endDate]);
+    dispatch(fetchPayments({
+      ...(showAllDates ? {} : { startDate: selectedDate, endDate: selectedDate }),
+      ...(methodFilter !== 'all' ? { method: methodFilter } : {}),
+      limit: 200,
+    }));
+  }, [dispatch, selectedDate, showAllDates, methodFilter]);
 
   async function handleAdd(e) {
     e.preventDefault();
@@ -115,14 +131,42 @@ export default function PaymentsPage() {
       {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border rounded px-3 py-1.5 text-sm" />
+        <div className="flex gap-1">
+          {QUICK_RANGES.map((r) => {
+            const rangeDate = shiftDateStr(r.days);
+            const active = !showAllDates && selectedDate === rangeDate;
+            return (
+              <Button
+                key={r.label}
+                type="button"
+                variant={active ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => { setSelectedDate(rangeDate); setShowAllDates(false); }}
+              >
+                {r.label}
+              </Button>
+            );
+          })}
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded px-3 py-1.5 text-sm" />
-        </div>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => { setSelectedDate(e.target.value); setShowAllDates(false); }}
+          disabled={showAllDates}
+          className="border rounded px-3 py-1.5 text-sm disabled:opacity-40"
+        />
+        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+          <input type="checkbox" checked={showAllDates} onChange={(e) => setShowAllDates(e.target.checked)} />
+          All dates
+        </label>
+        <select
+          value={methodFilter}
+          onChange={(e) => setMethodFilter(e.target.value)}
+          className="border rounded px-3 py-1.5 text-sm"
+        >
+          <option value="all">All methods</option>
+          {Object.entries(METHOD_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
       </div>
 
       {loading ? (
@@ -130,9 +174,9 @@ export default function PaymentsPage() {
       ) : payments.length === 0 ? (
         <p className="text-gray-400 text-sm py-10 text-center">No payments recorded yet.</p>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+        <div className="bg-white rounded-xl shadow-sm border overflow-x-auto max-h-[65vh] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 bg-white">
               <tr className="text-left text-gray-500 border-b">
                 <th className="px-4 py-2 font-medium">Date</th>
                 <th className="px-4 py-2 font-medium">Order</th>

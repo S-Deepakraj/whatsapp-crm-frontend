@@ -46,6 +46,12 @@ const CHANNEL_OPTIONS = [
   { value: 'ils',             label: 'Partner Labs (ILS)' },
 ];
 
+const PAYMENT_STATUS_OPTIONS = [
+  { value: 'paid',    label: 'Paid' },
+  { value: 'partial', label: 'Partially Paid' },
+  { value: 'unpaid',  label: 'Unpaid' },
+];
+
 function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
@@ -187,6 +193,7 @@ export default function OrdersPage() {
   // a specific lab is selectable directly, in one step, instead of picking
   // "Partner Labs" first and then a second dropdown for which one.
   const [typeFilter, setTypeFilter] = useState('all');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [needsPricingOnly, setNeedsPricingOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -200,12 +207,13 @@ export default function OrdersPage() {
     ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
     ...(isLabFilter ? { channel: 'ils', partnerLabId: typeFilter.slice(4) }
       : typeFilter !== 'all' ? { channel: typeFilter } : {}),
+    ...(paymentStatusFilter !== 'all' ? { paymentStatus: paymentStatusFilter } : {}),
     ...(needsPricingOnly ? { needsPricing: true } : {}),
   };
 
   useEffect(() => { dispatch(fetchPartnerLabs()); }, [dispatch]);
 
-  useEffect(() => { setPage(1); }, [scheduledDate, showAllDates, statusFilter, typeFilter, needsPricingOnly]);
+  useEffect(() => { setPage(1); }, [scheduledDate, showAllDates, statusFilter, typeFilter, paymentStatusFilter, needsPricingOnly]);
 
   useEffect(() => {
     dispatch(fetchOrders({
@@ -213,7 +221,7 @@ export default function OrdersPage() {
       ...filterParams,
       ...pageParams,
     }));
-  }, [dispatch, scheduledDate, showAllDates, statusFilter, typeFilter, needsPricingOnly, page]);
+  }, [dispatch, scheduledDate, showAllDates, statusFilter, typeFilter, paymentStatusFilter, needsPricingOnly, page]);
 
   function refetch() {
     dispatch(fetchOrders({ ...(showAllDates ? {} : { scheduledDate }), ...filterParams, ...pageParams }));
@@ -335,6 +343,14 @@ export default function OrdersPage() {
             </optgroup>
           )}
         </select>
+        <select
+          value={paymentStatusFilter}
+          onChange={(e) => setPaymentStatusFilter(e.target.value)}
+          className="border rounded px-3 py-1.5 text-sm"
+        >
+          <option value="all">All payment statuses</option>
+          {PAYMENT_STATUS_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
         <label className="flex items-center gap-1.5 text-sm text-gray-600">
           <input type="checkbox" checked={needsPricingOnly} onChange={(e) => setNeedsPricingOnly(e.target.checked)} />
           Needs Pricing only
@@ -353,6 +369,13 @@ export default function OrdersPage() {
               const needsPricing = o.test_lines.some((l) => l.agreedPrice == null);
               const agreedTotal = needsPricing ? null : o.test_lines.reduce((s, l) => s + parseFloat(l.agreedPrice), 0);
               const b2bTotal = o.test_lines.reduce((s, l) => s + (parseFloat(l.b2bRate) || 0), 0);
+              const paidAmount = parseFloat(o.paid_amount) || 0;
+              const isFullyPaid = agreedTotal != null && paidAmount >= agreedTotal && agreedTotal > 0;
+              const paymentChipClass = isFullyPaid
+                ? 'bg-green-100 text-green-700'
+                : paidAmount > 0
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-gray-100 text-gray-500';
               return (
               <li key={o.id} className="bg-white rounded-xl shadow-sm border p-4">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -387,6 +410,11 @@ export default function OrdersPage() {
                       {o.technician_name && (
                         <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">
                           {o.technician_name}
+                        </span>
+                      )}
+                      {o.channel !== 'ils' && (
+                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${paymentChipClass}`}>
+                          {isFullyPaid ? 'Paid' : paidAmount > 0 ? `Paid ₹${paidAmount.toLocaleString('en-IN')}` : 'Unpaid'}
                         </span>
                       )}
                     </div>

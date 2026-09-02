@@ -95,6 +95,99 @@ function IlsByLabTable({ labs, title = 'Revenue by Partner Lab (ILS)' }) {
   );
 }
 
+// Fixed identity → color mapping (never by rank/position) so a method
+// keeps its color regardless of which methods are present in a given
+// period. First six slots of the validated categorical order. Covers
+// both DPS payment methods (cash/upi/card/other) and ILS settlement
+// receipt methods (cash/upi/bank_transfer/cheque/other) — see
+// repo.paymentMethodBreakdown.
+const PAYMENT_METHOD_LABEL = {
+  cash: 'Cash', upi: 'UPI', card: 'Card',
+  bank_transfer: 'Bank Transfer', cheque: 'Cheque', other: 'Other',
+};
+const PAYMENT_METHOD_COLOR = {
+  cash: '#2a78d6', upi: '#eb6834', card: '#1baf7a',
+  bank_transfer: '#eda100', cheque: '#e87ba4', other: '#008300',
+};
+const PAYMENT_METHOD_ORDER = ['cash', 'upi', 'card', 'bank_transfer', 'cheque', 'other'];
+
+function PaymentMethodBreakdown({ paymentMethods }) {
+  const byMethod = Object.fromEntries(paymentMethods.map((m) => [m.method, m]));
+  const segments = PAYMENT_METHOD_ORDER.map((key) => byMethod[key]).filter(Boolean);
+  const total = segments.reduce((s, m) => s + m.total, 0);
+  const totalCount = segments.reduce((s, m) => s + m.count, 0);
+
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-gray-700 mb-2">Total Payments by Method (DPS + ILS Settlements)</h2>
+      <div className="bg-white rounded-xl shadow-sm border p-4 space-y-4">
+        {total === 0 ? (
+          <p className="text-gray-400 text-sm py-6 text-center">No payments recorded in this period.</p>
+        ) : (
+          <>
+            <div className="flex h-6 w-full rounded overflow-hidden gap-0.5">
+              {segments.map((m) => {
+                const pct = (m.total / total) * 100;
+                return (
+                  <div
+                    key={m.method}
+                    className="h-full flex items-center justify-center text-[11px] font-medium text-white"
+                    style={{ width: `${pct}%`, backgroundColor: PAYMENT_METHOD_COLOR[m.method] }}
+                    title={`${PAYMENT_METHOD_LABEL[m.method]}: ${money(m.total)} (${Math.round(pct)}%)`}
+                  >
+                    {pct >= 12 ? `${Math.round(pct)}%` : ''}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap gap-4 text-xs">
+              {segments.map((m) => (
+                <div key={m.method} className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: PAYMENT_METHOD_COLOR[m.method] }} />
+                  <span className="text-gray-600">{PAYMENT_METHOD_LABEL[m.method]}</span>
+                </div>
+              ))}
+            </div>
+
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b">
+                  <th className="py-1.5 font-medium">Method</th>
+                  <th className="py-1.5 font-medium">Amount</th>
+                  <th className="py-1.5 font-medium">Payments</th>
+                  <th className="py-1.5 font-medium">Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {segments.map((m) => (
+                  <tr key={m.method} className="border-b last:border-0">
+                    <td className="py-1.5 flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: PAYMENT_METHOD_COLOR[m.method] }} />
+                      {PAYMENT_METHOD_LABEL[m.method]}
+                    </td>
+                    <td className="py-1.5 font-medium">{money(m.total)}</td>
+                    <td className="py-1.5 text-gray-500">{m.count}</td>
+                    <td className="py-1.5 text-gray-500">{Math.round((m.total / total) * 100)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t">
+                  <td className="py-1.5 font-medium">Total</td>
+                  <td className="py-1.5 font-bold">{money(total)}</td>
+                  <td className="py-1.5 text-gray-500">{totalCount}</td>
+                  <td className="py-1.5"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ExpensesTable({ expenses }) {
   const entries = Object.entries(expenses.byCategory);
   return (
@@ -281,6 +374,7 @@ function DailyTab() {
       {dailyLoading || !report ? <p className="text-gray-500 text-sm">Loading…</p> : (
         <>
           <DailySummaryCards report={report} />
+          <PaymentMethodBreakdown paymentMethods={report.paymentMethods} />
 
           <button
             type="button"
@@ -334,6 +428,7 @@ function WeeklyTab() {
             <StatCard label="Net Profit" value={money(report.netProfit)} trendPct={report.trend.netProfit} tone={report.netProfit >= 0 ? 'good' : 'bad'} />
           </div>
           <OrderStatsRow orderStats={report.orderStats} />
+          <PaymentMethodBreakdown paymentMethods={report.paymentMethods} />
           <IlsByLabTable labs={report.ilsByLab} />
           <ExpensesTable expenses={report.expenses} />
           <SummaryStrip report={report} />
@@ -362,6 +457,7 @@ function MonthlyTab() {
             <StatCard label="Net Profit / Takehome" value={money(report.netProfit)} trendPct={report.trend.netProfit} tone={report.netProfit >= 0 ? 'good' : 'bad'} />
           </div>
           <OrderStatsRow orderStats={report.orderStats} />
+          <PaymentMethodBreakdown paymentMethods={report.paymentMethods} />
           <IlsByLabTable labs={report.ilsByLab} />
           <TopLabsSection topLabsByVolume={report.topLabsByVolume} topLabsByMargin={report.topLabsByMargin} />
           <ExpensesTable expenses={report.expenses} />

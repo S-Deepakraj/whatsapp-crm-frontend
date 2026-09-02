@@ -1,10 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../services/api';
+import { createPayment } from './paymentSlice';
 
 export const fetchOrders = createAsyncThunk(
   'orders/fetchAll',
-  async ({ scheduledDate, status, channel, partnerLabId, needsPricing, limit = 20, offset = 0 } = {}) => {
-    const { data } = await api.get('/orders', { params: { scheduledDate, status, channel, partnerLabId, needsPricing, limit, offset } });
+  async ({ scheduledDate, status, channel, partnerLabId, needsPricing, paymentStatus, limit = 20, offset = 0 } = {}) => {
+    const { data } = await api.get('/orders', { params: { scheduledDate, status, channel, partnerLabId, needsPricing, paymentStatus, limit, offset } });
     return data; // { data: [], total: N }
   }
 );
@@ -112,6 +113,10 @@ const orderSlice = createSlice({
       .addCase(deleteOrder.fulfilled, (state, action) => {
         state.data = state.data.filter((o) => o.id !== action.payload);
         state.total -= 1;
+      })
+      .addCase(createPayment.fulfilled, (state, action) => {
+        const order = state.data.find((o) => o.id === action.payload.order_id);
+        if (order) order.paid_amount = (parseFloat(order.paid_amount) || 0) + parseFloat(action.payload.amount);
       });
   },
 });
