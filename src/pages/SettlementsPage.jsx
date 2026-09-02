@@ -410,7 +410,7 @@ function DailyView() {
               <tr className="text-left text-gray-500 border-b">
                 <th className="px-4 py-2 font-medium">Partner Lab</th>
                 <th className="px-4 py-2 font-medium">Orders</th>
-                <th className="px-4 py-2 font-medium">Expected</th>
+                <th className="px-4 py-2 font-medium" title="Sum of each linked order's own agreed price.">Expected</th>
                 <th className="px-4 py-2 font-medium">Received</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium"></th>
@@ -494,7 +494,7 @@ function HistoryView() {
                 <th className="px-4 py-2 font-medium">Date</th>
                 <th className="px-4 py-2 font-medium">Partner Lab</th>
                 <th className="px-4 py-2 font-medium">Orders</th>
-                <th className="px-4 py-2 font-medium">Expected</th>
+                <th className="px-4 py-2 font-medium" title="Sum of each linked order's own agreed price.">Expected</th>
                 <th className="px-4 py-2 font-medium">Received</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium"></th>

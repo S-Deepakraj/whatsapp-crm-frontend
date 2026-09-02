@@ -8,8 +8,10 @@ import api from '../services/api';
 import { Button } from './ui/button';
 
 // Deliberately its own component, not a stripped-down copy of
-// OrderFormModal — no price/rate field exists anywhere here, by
-// construction, not by hiding one.
+// OrderFormModal — no per-test price/rate field exists anywhere here, by
+// construction, not by hiding one. The one exception is the walk-in
+// "amount collected" field: a lump total, not a catalog price lookup —
+// the technician still never sees test pricing.
 export default function SelfCollectedOrderModal({ onClose, onCreated }) {
   const dispatch = useAppDispatch();
   const tests = useAppSelector((s) => s.testCatalog.data);
@@ -18,6 +20,7 @@ export default function SelfCollectedOrderModal({ onClose, onCreated }) {
   const [channel, setChannel] = useState('walk_in');
   const [testCatalogIds, setTestCatalogIds] = useState([]);
   const [testQuery, setTestQuery] = useState('');
+  const [amount, setAmount] = useState('');
 
   // walk-in customer: phone-search-then-quick-add
   const [phoneQuery, setPhoneQuery] = useState('');
@@ -69,6 +72,10 @@ export default function SelfCollectedOrderModal({ onClose, onCreated }) {
         if (!phoneQuery.trim() || !newCustomerName.trim()) return setError('Enter the patient\'s name and phone number');
         payload.newCustomer = { name: newCustomerName.trim(), phone: phoneQuery.trim() };
       }
+      if (amount.trim()) {
+        if (Number(amount) <= 0) return setError('Enter a valid amount');
+        payload.amount = Number(amount);
+      }
     } else {
       if (!partnerLabId) return setError('Pick a partner lab');
       if (!patientName.trim()) return setError('Enter the patient name');
@@ -93,8 +100,8 @@ export default function SelfCollectedOrderModal({ onClose, onCreated }) {
         <h2 className="text-lg font-bold mb-4">Add Order</h2>
 
         <div className="flex gap-1 mb-4">
-          <Button type="button" variant={channel === 'walk_in' ? 'default' : 'outline'} size="sm" onClick={() => setChannel('walk_in')}>Walk-in</Button>
-          <Button type="button" variant={channel === 'ils' ? 'default' : 'outline'} size="sm" onClick={() => setChannel('ils')}>ILS (Partner Lab)</Button>
+          <Button type="button" variant={channel === 'walk_in' ? 'default' : 'outline'} size="sm" onClick={() => { setChannel('walk_in'); setAmount(''); }}>Walk-in</Button>
+          <Button type="button" variant={channel === 'ils' ? 'default' : 'outline'} size="sm" onClick={() => { setChannel('ils'); setAmount(''); }}>ILS (Partner Lab)</Button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -186,6 +193,22 @@ export default function SelfCollectedOrderModal({ onClose, onCreated }) {
               ))}
             </div>
           </div>
+
+          {channel === 'walk_in' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Amount collected <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="number" min="0.01" step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Leave blank if unsure"
+                className="w-full border rounded px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-1">Leave blank and the owner will price it later.</p>
+            </div>
+          )}
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
