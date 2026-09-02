@@ -10,6 +10,17 @@ function today() {
   return new Date().toISOString().split('T')[0];
 }
 
+function shiftDateStr(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+const QUICK_RANGES = [
+  { label: 'Yesterday', days: -1 },
+  { label: 'Today',     days: 0 },
+];
+
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
@@ -21,6 +32,8 @@ export default function ExpensesPage() {
   const { data: expenses, loading } = useAppSelector((s) => s.expenses);
   const categories = useAppSelector((s) => s.expenseCategories.data);
   const technicians = useAppSelector((s) => s.technicians.data);
+  const [selectedDate, setSelectedDate] = useState(today());
+  const [showAllDates, setShowAllDates] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -30,7 +43,9 @@ export default function ExpensesPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
-  useEffect(() => { dispatch(fetchExpenses()); }, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchExpenses(showAllDates ? {} : { startDate: selectedDate, endDate: selectedDate }));
+  }, [dispatch, selectedDate, showAllDates]);
   useEffect(() => { dispatch(fetchExpenseCategories()); }, [dispatch]);
   useEffect(() => { dispatch(fetchTechnicians()); }, [dispatch]);
 
@@ -171,6 +186,37 @@ export default function ExpensesPage() {
         </form>
       )}
       {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <div className="flex gap-1">
+          {QUICK_RANGES.map((r) => {
+            const rangeDate = shiftDateStr(r.days);
+            const active = !showAllDates && selectedDate === rangeDate;
+            return (
+              <Button
+                key={r.label}
+                type="button"
+                variant={active ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => { setSelectedDate(rangeDate); setShowAllDates(false); }}
+              >
+                {r.label}
+              </Button>
+            );
+          })}
+        </div>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => { setSelectedDate(e.target.value); setShowAllDates(false); }}
+          disabled={showAllDates}
+          className="border rounded px-3 py-1.5 text-sm disabled:opacity-40"
+        />
+        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+          <input type="checkbox" checked={showAllDates} onChange={(e) => setShowAllDates(e.target.checked)} />
+          All dates
+        </label>
+      </div>
 
       {loading ? (
         <p className="text-gray-500 text-sm">Loading…</p>
