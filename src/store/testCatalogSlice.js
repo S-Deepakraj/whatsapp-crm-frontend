@@ -16,6 +16,26 @@ export const updateTest = createAsyncThunk('testCatalog/update', async ({ id, ..
   return data;
 });
 
+export const fetchSampleTypes = createAsyncThunk('testCatalog/fetchSampleTypes', async (id) => {
+  const { data } = await api.get(`/test-catalog/${id}/sample-types`);
+  return data;
+});
+
+export const saveSampleTypes = createAsyncThunk('testCatalog/saveSampleTypes', async ({ id, sampleTypes }) => {
+  const { data } = await api.put(`/test-catalog/${id}/sample-types`, { sampleTypes });
+  return data;
+});
+
+export const fetchIncludedTests = createAsyncThunk('testCatalog/fetchIncludedTests', async (id) => {
+  const { data } = await api.get(`/test-catalog/${id}/included-tests`);
+  return data;
+});
+
+export const saveIncludedTests = createAsyncThunk('testCatalog/saveIncludedTests', async ({ id, includedTests }) => {
+  const { data } = await api.put(`/test-catalog/${id}/included-tests`, { includedTests });
+  return data;
+});
+
 const testCatalogSlice = createSlice({
   name: 'testCatalog',
   initialState: { data: [], loading: false },
