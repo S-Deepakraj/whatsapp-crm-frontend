@@ -52,6 +52,16 @@ export const notifyOrder = createAsyncThunk(
   }
 );
 
+// Report handed over outside the CRM — records it and starts the Google
+// review campaign. Response carries review_campaign { created, skippedReason }.
+export const markReportDelivered = createAsyncThunk(
+  'orders/markReportDelivered',
+  async (id) => {
+    const { data } = await api.post(`/orders/${id}/report-delivered`);
+    return data;
+  }
+);
+
 export const deleteOrder = createAsyncThunk(
   'orders/delete',
   async (id) => {
@@ -103,6 +113,10 @@ const orderSlice = createSlice({
         if (idx !== -1) state.data[idx] = action.payload;
       })
       .addCase(notifyOrder.fulfilled, (state, action) => {
+        const idx = state.data.findIndex((o) => o.id === action.payload.id);
+        if (idx !== -1) state.data[idx] = action.payload;
+      })
+      .addCase(markReportDelivered.fulfilled, (state, action) => {
         const idx = state.data.findIndex((o) => o.id === action.payload.id);
         if (idx !== -1) state.data[idx] = action.payload;
       })

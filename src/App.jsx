@@ -23,6 +23,7 @@ import PartnerLabRatesPage from './pages/PartnerLabRatesPage';
 import AccountsPage from './pages/AccountsPage';
 import ExpenseCategoriesPage from './pages/ExpenseCategoriesPage';
 import MyOrdersPage from './pages/MyOrdersPage';
+import ReviewsPage from './pages/ReviewsPage';
 
 function ProtectedRoute({ children }) {
   const token = useAppSelector((s) => s.auth.token);
@@ -57,6 +58,7 @@ export default function App() {
       <Route path="/customers/:id/edit" element={<OwnerRoute><CustomerFormPage /></OwnerRoute>} />
       <Route path="/customers/:id" element={<OwnerRoute><CustomerProfilePage /></OwnerRoute>} />
       <Route path="/followups" element={<OwnerRoute><FollowupsPage /></OwnerRoute>} />
+      <Route path="/reviews" element={<OwnerRoute><ReviewsPage /></OwnerRoute>} />
       <Route path="/orders" element={<OwnerRoute><OrdersPage /></OwnerRoute>} />
       <Route path="/day-view" element={<OwnerRoute><DayViewPage /></OwnerRoute>} />
       <Route path="/technicians" element={<OwnerRoute><TechniciansPage /></OwnerRoute>} />

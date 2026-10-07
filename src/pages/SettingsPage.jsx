@@ -5,11 +5,13 @@ import { Button } from '../components/ui/button';
 
 const TEMPLATE_FIELDS = [
   { key: 'followupTemplate', label: 'Follow-Up Template', hint: 'Sent for general check-ins and reminders.' },
-  { key: 'reviewTemplate',   label: 'Review Request Template', hint: 'Your Google Review URL is appended automatically — no need to include it here.' },
   { key: 'thankyouTemplate', label: 'Thank You Template', hint: 'Sent after a visit to thank the customer.' },
 ];
 
-const EMPTY_FORM = { googleReviewUrl: '', followupTemplate: '', reviewTemplate: '', thankyouTemplate: '' };
+// reviewTemplate is no longer edited here (review messages come from the
+// fixed, policy-checked campaign templates) but is still round-tripped
+// so saving doesn't blank it.
+const EMPTY_FORM = { googleReviewUrl: '', followupTemplate: '', reviewTemplate: '', thankyouTemplate: '', reviewAutomationEnabled: true, reviewContactName: '' };
 
 export default function SettingsPage() {
   const dispatch = useAppDispatch();
@@ -26,12 +28,15 @@ export default function SettingsPage() {
         followupTemplate: data.followupTemplate ?? '',
         reviewTemplate:   data.reviewTemplate ?? '',
         thankyouTemplate: data.thankyouTemplate ?? '',
+        reviewAutomationEnabled: data.reviewAutomationEnabled ?? true,
+        reviewContactName: data.reviewContactName ?? '',
       });
     }
   }, [data]);
 
   function handleChange(e) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, type, checked, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     setSaved(false);
   }
 
@@ -70,7 +75,49 @@ export default function SettingsPage() {
             placeholder="https://g.page/r/your-business/review"
             className="w-full border rounded px-3 py-2 text-sm"
           />
-          <p className="text-xs text-gray-400 mt-1">Appended automatically to the review request message.</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Customers reach it through a tracked link in the review request and reminder messages.
+          </p>
+        </div>
+
+        <div className="border rounded-lg p-4 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-gray-700">Google review requests</p>
+            <p className="text-xs text-gray-400">
+              Starts when a report is marked delivered. Every eligible customer gets the same messages — sent by you from Reviews → Due now.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              name="reviewAutomationEnabled"
+              checked={form.reviewAutomationEnabled}
+              onChange={handleChange}
+            />
+            Review automation enabled
+          </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Contact person name</label>
+            <input
+              name="reviewContactName"
+              value={form.reviewContactName}
+              onChange={handleChange}
+              maxLength={100}
+              placeholder="e.g. Deepak"
+              className="w-full border rounded px-3 py-2 text-sm"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Used in the check-in: "Hi Ravi, this is <strong>{form.reviewContactName || 'your login name'}</strong> from {data?.businessName || 'your business'}." Left empty, the logged-in user's name is used.
+            </p>
+          </div>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+            <dt>Business name in messages</dt><dd className="text-gray-700">{data?.businessName || '—'}</dd>
+            <dt>Check-in</dt><dd className="text-gray-700">2–4 hours after report delivered</dd>
+            <dt>Review request</dt><dd className="text-gray-700">12–24 hours after check-in</dd>
+            <dt>Reminder</dt><dd className="text-gray-700">3 days later, only if link not clicked</dd>
+            <dt>Maximum reminders</dt><dd className="text-gray-700">1</dd>
+            <dt>Quiet hours</dt><dd className="text-gray-700">8 PM – 9 AM (moved to 10 AM)</dd>
+          </dl>
         </div>
 
         {TEMPLATE_FIELDS.map((f) => (

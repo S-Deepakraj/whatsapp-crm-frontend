@@ -14,11 +14,6 @@ export function buildFollowupMessage(settings, customerName) {
   return renderTemplate(settings?.followupTemplate || DEFAULTS.followupTemplate, vars(settings, customerName));
 }
 
-export function buildReviewMessage(settings, customerName) {
-  const base = renderTemplate(settings?.reviewTemplate || DEFAULTS.reviewTemplate, vars(settings, customerName));
-  return settings?.googleReviewUrl ? `${base} ${settings.googleReviewUrl}` : base;
-}
-
 export function buildThankYouMessage(settings, customerName) {
   return renderTemplate(settings?.thankyouTemplate || DEFAULTS.thankyouTemplate, vars(settings, customerName));
 }

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { fetchOrders, updateOrderStatus, notifyOrder, uploadReport, deleteOrder } from '../store/orderSlice';
+import { fetchOrders, updateOrderStatus, notifyOrder, uploadReport, deleteOrder, markReportDelivered } from '../store/orderSlice';
+import { publishToast } from '../utils/toastBus';
 import { fetchPartnerLabs } from '../store/partnerLabSlice';
 import OrderFormModal from '../components/OrderFormModal';
 import AddPaymentModal from '../components/AddPaymentModal';
@@ -81,7 +82,15 @@ function formatTime(timeStr) {
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder, onMarkCollected, onSendCollectionAck, onViewReport, onSendReport, onUploadReport, onClose, onCancel, onAddPayment, onDelete }) {
+function reviewChip(o) {
+  if (!o.review_request_id) return null;
+  if (o.review_first_clicked_at) return { label: '⭐ Review link clicked', className: 'bg-green-100 text-green-700' };
+  if (o.review_status === 'active') return { label: '⭐ Review campaign active', className: 'bg-blue-100 text-blue-700' };
+  if (o.review_status === 'failed') return { label: '⭐ Review campaign failed', className: 'bg-red-100 text-red-700' };
+  return { label: `⭐ Review campaign ${o.review_status}`, className: 'bg-gray-100 text-gray-600' };
+}
+
+function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder, onMarkCollected, onSendCollectionAck, onViewReport, onSendReport, onUploadReport, onMarkReportDelivered, onClose, onCancel, onAddPayment, onDelete }) {
   const fileInputRef = useRef(null);
 
   // A cancelled order has nothing left to do except get deleted if it's
@@ -168,6 +177,14 @@ function OrderActionsMenu({ order: o, onEdit, onSendConfirmation, onSendReminder
           ) : (
             <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>Upload report</DropdownMenuItem>
           )
+        )}
+        {/* Reports handed over outside the CRM — records delivery and
+            starts the Google review campaign. */}
+        {inReportStage && o.channel !== 'ils' && !o.report_sent_at && (
+          <DropdownMenuItem onClick={() => onMarkReportDelivered(o)}>Mark report delivered</DropdownMenuItem>
+        )}
+        {inReportStage && o.channel !== 'ils' && o.report_sent_at && !o.review_request_id && (
+          <DropdownMenuItem onClick={() => onMarkReportDelivered(o)}>Start review campaign</DropdownMenuItem>
         )}
         {canClose && <DropdownMenuItem onClick={() => onClose(o.id)}>Close order</DropdownMenuItem>}
 
@@ -270,6 +287,19 @@ export default function OrdersPage() {
     const reportUrl = `${API_BASE}/public/reports/${o.report_token}`;
     window.open(buildWhatsAppLink(o.customer_phone, buildOrderReportMessage(settings, o, reportUrl)), '_blank');
     dispatch(notifyOrder({ id: o.id, type: 'report' }));
+  }
+
+  async function handleMarkReportDelivered(o) {
+    const res = await dispatch(markReportDelivered(o.id));
+    if (!markReportDelivered.fulfilled.match(res)) return;
+    const campaign = res.payload.review_campaign;
+    if (campaign?.created) {
+      publishToast({ message: 'Report marked delivered — review check-in scheduled.', type: 'success' });
+    } else if (campaign?.skippedReason) {
+      publishToast({ message: `Report marked delivered. Review campaign not started: ${campaign.skippedReason}`, type: 'info' });
+    } else {
+      publishToast({ message: 'Report marked delivered.', type: 'success' });
+    }
   }
 
   function handleClose(id) {
@@ -401,6 +431,11 @@ export default function OrdersPage() {
                           ILS · {o.partner_lab_name}
                         </span>
                       )}
+                      {reviewChip(o) && (
+                        <Link to="/reviews?tab=all" className={`text-xs px-2 py-0.5 rounded font-medium ${reviewChip(o).className}`}>
+                          {reviewChip(o).label}
+                        </Link>
+                      )}
                       {o.channel !== 'ils' && <span className="text-xs text-gray-400">{o.customer_phone}</span>}
                       <span className="text-xs text-gray-400">
                         {o.channel === 'home_collection'
@@ -444,6 +479,7 @@ export default function OrdersPage() {
                     onViewReport={handleViewReport}
                     onSendReport={handleSendReport}
                     onUploadReport={handleUploadReport}
+                    onMarkReportDelivered={handleMarkReportDelivered}
                     onClose={handleClose}
                     onCancel={handleCancel}
                     onAddPayment={setPaymentOrder}

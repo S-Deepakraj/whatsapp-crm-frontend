@@ -8,8 +8,11 @@ import FollowupFormModal from '../components/FollowupFormModal';
 import VisitFormModal    from '../components/VisitFormModal';
 import QuickActionBar    from '../components/QuickActionBar';
 import Pagination        from '../components/Pagination';
-import { buildFollowupMessage, buildReviewMessage } from '../utils/messageBuilder';
-import { buildWhatsAppLink } from '../utils/whatsapp';
+import ReviewRequestPanel from '../components/ReviewRequestPanel';
+import { buildFollowupMessage } from '../utils/messageBuilder';
+import { startReviewRequest } from '../store/reviewRequestSlice';
+import { EVENT_LABELS } from '../utils/reviewLabels';
+import { publishToast } from '../utils/toastBus';
 import api from '../services/api';
 import { Button } from '../components/ui/button';
 
@@ -25,7 +28,13 @@ const ACTION_LABELS = {
   FOLLOWUP_COMPLETED:   'Follow-up completed',
   FOLLOWUP_RESCHEDULED: 'Follow-up rescheduled',
   REVIEW_REQUESTED:     'Review requested',
+  ...EVENT_LABELS,
 };
+
+// Google review campaign events all share one colour.
+const REVIEW_EVENT_COLORS = Object.fromEntries(
+  Object.keys(EVENT_LABELS).map((k) => [k, 'bg-pink-100 text-pink-700'])
+);
 
 const ACTION_COLORS = {
   CUSTOMER_CREATED:     'bg-blue-100 text-blue-700',
@@ -37,6 +46,7 @@ const ACTION_COLORS = {
   FOLLOWUP_COMPLETED:   'bg-purple-100 text-purple-700',
   FOLLOWUP_RESCHEDULED: 'bg-orange-100 text-orange-700',
   REVIEW_REQUESTED:     'bg-pink-100 text-pink-700',
+  ...REVIEW_EVENT_COLORS,
 };
 
 // ─── helpers ────────────────────────────────────────────────
@@ -162,6 +172,7 @@ export default function CustomerProfilePage() {
   const [summary,   setSummary]   = useState(null);
   const [activity,  setActivity]  = useState([]);
   const [related,   setRelated]   = useState([]);
+  const [reviewRequests, setReviewRequests] = useState([]);
   const [tab,       setTab]       = useState('visits');
   const [page,      setPage]      = useState(1);
   const [confirmDelete, setConfirmDelete]    = useState(false);
@@ -188,6 +199,7 @@ export default function CustomerProfilePage() {
   useEffect(() => {
     api.get(`/customers/${customerId}/summary`).then((r) => setSummary(r.data));
     api.get(`/customers/${customerId}/activity`).then((r) => setActivity(r.data));
+    api.get('/review-requests', { params: { customerId } }).then((r) => setReviewRequests(r.data.data));
   }, [customerId]);
 
   // Find other customers sharing this phone number (e.g. family members)
@@ -210,11 +222,21 @@ export default function CustomerProfilePage() {
     navigate('/customers');
   }
 
-  async function handleRequestReview() {
-    const message = buildReviewMessage(settings, customer.name);
-    window.open(buildWhatsAppLink(customer.phone, message), '_blank', 'noopener,noreferrer');
-    await api.post('/reviews', { customerId });
+  function reloadReviews() {
+    api.get('/review-requests', { params: { customerId } }).then((r) => setReviewRequests(r.data.data));
     api.get(`/customers/${customerId}/activity`).then((r) => setActivity(r.data));
+  }
+
+  // Replaces the old direct "send Google link" button: every review ask
+  // now goes through the tracked post-report campaign. Starts one for
+  // the latest order whose report was delivered.
+  async function handleStartReviewCampaign() {
+    const res = await dispatch(startReviewRequest({ customerId }));
+    if (startReviewRequest.fulfilled.match(res)) {
+      publishToast({ message: 'Review campaign started — check-in scheduled.', type: 'success' });
+      reloadReviews();
+    }
+    document.getElementById('review-campaigns')?.scrollIntoView({ behavior: 'smooth' });
   }
 
   if (!customer || customer.id !== customerId) {
@@ -266,7 +288,7 @@ export default function CustomerProfilePage() {
       <QuickActionBar
         phone={customer.phone}
         whatsappMessage={whatsappMessage}
-        onRequestReview={handleRequestReview}
+        onRequestReview={handleStartReviewCampaign}
         onAddVisit={() => setShowVisit(true)}
         onAddFollowup={() => setShowFollowup(true)}
       />
@@ -300,6 +322,25 @@ export default function CustomerProfilePage() {
           sub={summary?.lastFollowup ? `${fmt(summary.lastFollowup.due_date)} · ${summary.lastFollowup.status}` : null}
           color="text-orange-600"
         />
+      </div>
+
+      {/* ── Google review campaigns ── */}
+      <div id="review-campaigns" className="space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-lg font-semibold text-gray-800">Review Request</h2>
+          {!reviewRequests.some((r) => r.status === 'active') && (
+            <Button size="sm" variant="outline" onClick={handleStartReviewCampaign}>Start review campaign</Button>
+          )}
+        </div>
+        {reviewRequests.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            No review campaigns yet. One starts automatically when a report is marked delivered on an order.
+          </p>
+        ) : (
+          reviewRequests.map((r) => (
+            <ReviewRequestPanel key={r.id} requestId={r.id} onChanged={reloadReviews} />
+          ))
+        )}
       </div>
 
       {/* ── Notes ── */}
