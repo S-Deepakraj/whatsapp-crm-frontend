@@ -68,6 +68,13 @@ export const cancelReviewRequest = createAsyncThunk('reviewRequests/cancel', wit
   return data;
 }));
 
+// "Got review" — staff saw the review on Google; ends the campaign
+// (skipping the reminder) if it's still running.
+export const markReviewReceived = createAsyncThunk('reviewRequests/reviewReceived', withMessage(async (id) => {
+  const { data } = await api.post(`/review-requests/${id}/review-received`);
+  return data;
+}));
+
 export const retryReviewRequest = createAsyncThunk('reviewRequests/retry', withMessage(async (id) => {
   const { data } = await api.post(`/review-requests/${id}/retry`);
   return data;
@@ -110,7 +117,8 @@ const reviewRequestSlice = createSlice({
       .addCase(sendReviewStep.fulfilled, (state, action) => upsert(state, action.payload))
       .addCase(sendReviewRequestNow.fulfilled, (state, action) => upsert(state, action.payload))
       .addCase(cancelReviewRequest.fulfilled, (state, action) => upsert(state, action.payload))
-      .addCase(retryReviewRequest.fulfilled, (state, action) => upsert(state, action.payload));
+      .addCase(retryReviewRequest.fulfilled, (state, action) => upsert(state, action.payload))
+      .addCase(markReviewReceived.fulfilled, (state, action) => upsert(state, action.payload));
   },
 });
 

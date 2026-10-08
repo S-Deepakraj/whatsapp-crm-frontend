@@ -84,6 +84,7 @@ function formatTime(timeStr) {
 
 function reviewChip(o) {
   if (!o.review_request_id) return null;
+  if (o.review_received_at) return { label: '⭐ Google review received', className: 'bg-green-100 text-green-700' };
   if (o.review_first_clicked_at) return { label: '⭐ Review link clicked', className: 'bg-green-100 text-green-700' };
   if (o.review_status === 'active') return { label: '⭐ Review campaign active', className: 'bg-blue-100 text-blue-700' };
   if (o.review_status === 'failed') return { label: '⭐ Review campaign failed', className: 'bg-red-100 text-red-700' };

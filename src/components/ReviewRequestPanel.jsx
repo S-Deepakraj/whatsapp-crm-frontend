@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import {
-  fetchReviewRequest, sendReviewRequestNow, cancelReviewRequest, retryReviewRequest,
+  fetchReviewRequest, sendReviewRequestNow, cancelReviewRequest, retryReviewRequest, markReviewReceived,
 } from '../store/reviewRequestSlice';
 import ReviewSendDialog from './ReviewSendDialog';
 import {
@@ -84,6 +84,15 @@ export default function ReviewRequestPanel({ requestId, onChanged }) {
     if (!res.error) setSending(true);
   }
 
+  // A click alone doesn't mean they posted — only staff can confirm it,
+  // and that's what skips the reminder.
+  async function handleGotReview() {
+    const msg = rr.status === 'active'
+      ? `Mark that ${rr.customer_name ?? 'this customer'} posted a Google review?\n\nOnly do this after you've seen the review on Google. The campaign ends and no reminder is sent.`
+      : `Mark that ${rr.customer_name ?? 'this customer'} posted a Google review?\n\nOnly do this after you've seen the review on Google.`;
+    if (window.confirm(msg)) await run(markReviewReceived, rr.id);
+  }
+
   async function handleCancel() {
     if (window.confirm('Stop this review campaign? No further messages will be scheduled.')) {
       await run(cancelReviewRequest, rr.id);
@@ -114,6 +123,12 @@ export default function ReviewRequestPanel({ requestId, onChanged }) {
             ? <span className="text-green-700">Clicked — {formatDateTime(rr.first_clicked_at)}{rr.click_count > 1 ? ` (${rr.click_count}×)` : ''}</span>
             : <span className="text-gray-400">Not clicked</span>}
         </div>
+        <div className="flex justify-between gap-3 text-sm">
+          <span className="text-gray-500">Google review</span>
+          {rr.review_received_at
+            ? <span className="text-green-700 font-medium">Received — {formatDateTime(rr.review_received_at)}</span>
+            : <span className="text-gray-400">Not confirmed</span>}
+        </div>
         <StepLine label="Reminder" sentAt={rr.reminder_sent_at} dueAt={rr.reminder_due_at}
           skippedAt={rr.reminder_skipped_at} isCurrent={rr.current_step === 'reminder'} active={active}
           message={messages.reminder} />
@@ -140,6 +155,12 @@ export default function ReviewRequestPanel({ requestId, onChanged }) {
         {active && rr.current_step === 'checkin' && (
           <Button size="sm" variant="outline" onClick={handleSendNow} disabled={busy}>
             Send Review Request Now
+          </Button>
+        )}
+        {rr.review_request_sent_at && !rr.review_received_at && (
+          <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50"
+            onClick={handleGotReview} disabled={busy}>
+            ✓ Got review
           </Button>
         )}
         {rr.status === 'failed' && (

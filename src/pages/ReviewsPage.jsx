@@ -101,17 +101,18 @@ export default function ReviewsPage() {
       )}
 
       {/* Funnel */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-2">
         <StatTile label="Eligible customers" value={stats?.eligible} hint="reports delivered" />
         <StatTile label="Review requests sent" value={stats?.requests_sent} />
         <StatTile label="Delivered" value="—" hint="not tracked (manual WhatsApp)" />
         <StatTile label="Review link clicks" value={stats?.clicked} hint="unique requests" />
         <StatTile label="Click rate" value={stats?.click_rate == null ? '—' : `${stats.click_rate}%`} hint="clicks ÷ requests sent" />
         <StatTile label="Reminders sent" value={stats?.reminders_sent} hint={stats ? `${stats.reminder_clicks} clicked after reminder` : undefined} />
+        <StatTile label="Reviews received" value={stats?.reviews_received} hint="confirmed by staff (Got review)" />
       </div>
       <p className="text-xs text-gray-400 mb-5">
         {stats && <>Check-ins sent {stats.checkins_sent} · Active {stats.active} · Completed {stats.completed} · Stopped {stats.stopped} · Failed {stats.failed}. </>}
-        A click means the customer opened the Google review page — not that a review was posted.
+        A click only means the customer opened the Google review page — it doesn't skip the reminder. Use "Got review" once you see their review on Google.
       </p>
 
       {/* Tabs */}
@@ -171,7 +172,7 @@ export default function ReviewsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
-                {['Customer', 'Order', 'Channel', 'Status', 'Sent', 'Clicked', 'Reminder', 'Created'].map((h) => (
+                {['Customer', 'Order', 'Channel', 'Status', 'Sent', 'Clicked', 'Reminder', 'Review', 'Created'].map((h) => (
                   <th key={h} className="text-left font-medium px-3 py-2 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -194,11 +195,12 @@ export default function ReviewsPage() {
                     <td className="px-3 py-2 whitespace-nowrap">
                       {r.reminder_sent_at ? formatDateTime(r.reminder_sent_at) : r.reminder_skipped_at ? 'Skipped' : '—'}
                     </td>
+                    <td className="px-3 py-2 whitespace-nowrap">{r.review_received_at ? <span className="text-green-700 font-medium">✓ Received</span> : '—'}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
                   </tr>
                   {expandedId === r.id && (
                     <tr className="border-t bg-gray-50">
-                      <td colSpan={8} className="p-3">
+                      <td colSpan={9} className="p-3">
                         <ReviewRequestPanel requestId={r.id} onChanged={reload} />
                       </td>
                     </tr>

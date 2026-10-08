@@ -115,7 +115,7 @@ export default function SettingsPage() {
             <dt>Business name in messages</dt><dd className="text-gray-700">{data?.businessName || '—'}</dd>
             <dt>Check-in</dt><dd className="text-gray-700">2–4 hours after report delivered</dd>
             <dt>Review request</dt><dd className="text-gray-700">12–24 hours after check-in</dd>
-            <dt>Reminder</dt><dd className="text-gray-700">3 days later, only if link not clicked</dd>
+            <dt>Reminder</dt><dd className="text-gray-700">3 days later, unless marked "Got review"</dd>
             <dt>Maximum reminders</dt><dd className="text-gray-700">1</dd>
             <dt>Quiet hours</dt><dd className="text-gray-700">8 PM – 9 AM (moved to 10 AM)</dd>
           </dl>
