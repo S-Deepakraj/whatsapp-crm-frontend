@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchSettings, saveSettings } from '../store/settingsSlice';
 import { Button } from '../components/ui/button';
+import WhatsAppConnectCard from '../components/WhatsAppConnectCard';
 
 const TEMPLATE_FIELDS = [
   { key: 'followupTemplate', label: 'Follow-Up Template', hint: 'Sent for general check-ins and reminders.' },
@@ -141,6 +142,8 @@ export default function SettingsPage() {
           {saved && <span className="text-sm text-green-600">Saved ✓</span>}
         </div>
       </form>
+
+      <WhatsAppConnectCard />
     </div>
   );
 }

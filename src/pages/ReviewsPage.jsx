@@ -1,7 +1,7 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { fetchReviewRequests, fetchReviewStats } from '../store/reviewRequestSlice';
+import { fetchReviewRequests, fetchReviewStats, reviewListKey } from '../store/reviewRequestSlice';
 import ReviewSendDialog from '../components/ReviewSendDialog';
 import ReviewRequestPanel from '../components/ReviewRequestPanel';
 import Pagination from '../components/Pagination';
@@ -35,7 +35,7 @@ function StatTile({ label, value, hint }) {
 
 export default function ReviewsPage() {
   const dispatch = useAppDispatch();
-  const { items, total, loading, stats } = useAppSelector((s) => s.reviewRequests);
+  const { items, total, loading, stats, itemsQuery } = useAppSelector((s) => s.reviewRequests);
   const settings = useAppSelector((s) => s.settings.data);
   const [searchParams, setSearchParams] = useSearchParams();
   const [sendTarget, setSendTarget] = useState(null);
@@ -55,15 +55,22 @@ export default function ReviewsPage() {
     setSearchParams(next, { replace: true });
   }
 
+  const listParams = useMemo(() => (tab === 'due'
+    ? { due: 1, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }
+    : { status: status || undefined, from: from || undefined, to: to || undefined, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }
+  ), [tab, status, from, to, page]);
+
   const reload = useCallback(() => {
-    const range = { from: from || undefined, to: to || undefined };
-    dispatch(fetchReviewStats(range));
-    dispatch(fetchReviewRequests(tab === 'due'
-      ? { due: 1, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }
-      : { status: status || undefined, ...range, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }));
-  }, [dispatch, tab, status, from, to, page]);
+    dispatch(fetchReviewStats({ from: from || undefined, to: to || undefined }));
+    dispatch(fetchReviewRequests(listParams));
+  }, [dispatch, listParams, from, to]);
 
   useEffect(() => { reload(); }, [reload]);
+
+  // Rows in the store may belong to another view (e.g. All requests,
+  // where completed rows have no current step) until this view's fetch
+  // lands — never render those.
+  const listReady = itemsQuery === reviewListKey(listParams);
 
   const automationOff = settings && settings.reviewAutomationEnabled === false;
   const missingUrl = settings && !settings.googleReviewUrl;
@@ -131,7 +138,7 @@ export default function ReviewsPage() {
         </div>
       )}
 
-      {loading ? (
+      {loading || !listReady ? (
         <p className="text-gray-500 text-sm">Loading…</p>
       ) : items.length === 0 ? (
         <p className="text-gray-400 text-sm py-10 text-center bg-white rounded-xl border">
@@ -155,7 +162,7 @@ export default function ReviewsPage() {
                   )}
                 </div>
               </div>
-              <Button size="sm" onClick={() => setSendTarget(r)}>Send {STEP_LABELS[r.current_step].toLowerCase()}</Button>
+              <Button size="sm" onClick={() => setSendTarget(r)}>Send {STEP_LABELS[r.current_step]?.toLowerCase() ?? 'message'}</Button>
             </li>
           ))}
         </ul>

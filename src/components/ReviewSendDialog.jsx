@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppDispatch } from '../hooks/redux';
-import { prepareReviewStep, confirmReviewStep } from '../store/reviewRequestSlice';
+import { prepareReviewStep, confirmReviewStep, sendReviewStep } from '../store/reviewRequestSlice';
 import { STEP_LABELS, FAILURE_REASONS } from '../utils/reviewLabels';
 import { Button } from './ui/button';
 
-// Manual WhatsApp send for one campaign step:
+// Sends one campaign step. With WhatsApp connected (prepared.mode 'api')
+// it's one click: the backend sends the approved template and
+// delivered/read arrive later by webhook. Otherwise the manual flow:
 //   1. backend renders the exact message + wa.me link (nothing marked yet)
 //   2. staff open WhatsApp and send it themselves
 //   3. staff confirm "Sent" or "Couldn't send" — that's what gets recorded.
-// We never mark a message delivered: opening wa.me proves nothing.
+// We never mark a manual message delivered: opening wa.me proves nothing.
 export default function ReviewSendDialog({ request, onClose, onDone }) {
   const dispatch = useAppDispatch();
   const step = request.current_step;
+  const [forceManual, setForceManual] = useState(false);
   const [prepared, setPrepared] = useState(null);
   const [error, setError] = useState(null);
   const [opened, setOpened] = useState(false);
@@ -23,11 +26,27 @@ export default function ReviewSendDialog({ request, onClose, onDone }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    dispatch(prepareReviewStep({ id: request.id, step })).then((res) => {
+    setPrepared(null);
+    setError(null);
+    const channel = forceManual ? 'whatsapp_manual' : undefined;
+    dispatch(prepareReviewStep({ id: request.id, step, channel })).then((res) => {
       if (prepareReviewStep.fulfilled.match(res)) setPrepared(res.payload);
       else setError(res.payload);
     });
-  }, [dispatch, request.id, step]);
+  }, [dispatch, request.id, step, forceManual]);
+
+  async function sendViaApi() {
+    setSaving(true);
+    setError(null);
+    const res = await dispatch(sendReviewStep({ id: request.id, step }));
+    setSaving(false);
+    if (sendReviewStep.fulfilled.match(res)) {
+      onDone?.(res.payload);
+      onClose();
+    } else {
+      setError(res.payload);
+    }
+  }
 
   function openWhatsApp() {
     window.open(prepared.url, '_blank', 'noopener');
@@ -79,8 +98,38 @@ export default function ReviewSendDialog({ request, onClose, onDone }) {
 
         {!prepared && !error && <p className="text-sm text-gray-500">Preparing message…</p>}
 
-        {prepared && (
+        {prepared?.mode === 'api' && (
           <>
+            <pre className="whitespace-pre-wrap font-sans text-sm bg-gray-50 border rounded-lg p-3 mb-2">{prepared.text}</pre>
+            <p className="text-xs text-gray-500 mb-4">
+              Sent from {prepared.from || 'your WhatsApp number'} using the approved template{' '}
+              <code className="bg-gray-100 px-1 rounded">{prepared.template}</code>. Delivery and read status update automatically.
+            </p>
+            <Button onClick={sendViaApi} disabled={saving} className="w-full bg-green-600 hover:bg-green-700">
+              {saving ? 'Sending…' : 'Send via WhatsApp'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setForceManual(true)}
+              disabled={saving}
+              className="mt-3 text-xs text-gray-500 underline"
+            >
+              Send manually instead
+            </button>
+          </>
+        )}
+
+        {prepared?.mode === 'manual' && (
+          <>
+            {prepared.apiAvailable && (
+              <button
+                type="button"
+                onClick={() => setForceManual(false)}
+                className="mb-3 text-xs text-gray-500 underline"
+              >
+                Back to sending via WhatsApp API
+              </button>
+            )}
             <pre className="whitespace-pre-wrap font-sans text-sm bg-gray-50 border rounded-lg p-3 mb-4">{prepared.text}</pre>
 
             <div className="flex gap-2 mb-5">
