@@ -85,6 +85,11 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
   // Prefill agreed price from this lab's negotiated rate when picking a
   // test on an ILS order — left blank (not MRP) if the lab hasn't been
   // priced for that test yet, so nobody accidentally bills them at MRP.
+  // Editing an ILS order and switching lab: the old lab's prices don't
+  // carry over, so every line is re-filled from the new lab's rates (blank
+  // where it has none). Switching back restores the order's own prices.
+  const labChanged = isEdit && isIls && partnerLabId !== String(order.partner_lab_id);
+
   useEffect(() => {
     if (!isIls || !partnerLabId) { setLabRates({}); return; }
     dispatch(fetchPartnerLabRates(Number(partnerLabId))).then((result) => {
@@ -92,6 +97,17 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
         const map = {};
         result.payload.forEach((r) => { if (r.rate != null) map[r.test_catalog_id] = r.rate; });
         setLabRates(map);
+        if (isEdit) {
+          const backToOriginal = partnerLabId === String(order.partner_lab_id);
+          setLines((prev) => prev.map((line) => {
+            if (!line.testCatalogId) return line;
+            const original = backToOriginal
+              ? order.test_lines.find((l) => l.testCatalogId === Number(line.testCatalogId))?.agreedPrice
+              : null;
+            const price = original ?? map[line.testCatalogId];
+            return { ...line, agreedPrice: price != null ? String(price) : '' };
+          }));
+        }
       }
     });
   }, [dispatch, isIls, partnerLabId]);
@@ -220,6 +236,7 @@ function updateLine(i, field, value) {
           notes: notes || null,
           testLines,
           ...(isIls ? { patientName: patientName.trim() } : {}),
+          ...(labChanged ? { partnerLabId: Number(partnerLabId) } : {}),
           ...(canEditAddressSlot ? {
             collectionAddress: collectionAddress.trim(),
             slotStart,
@@ -367,7 +384,25 @@ function updateLine(i, field, value) {
                   </div>
                 )}
                 {isIls && (
-                  <p className="text-xs text-gray-400 mt-1">Partner lab: {order.partner_lab_name}</p>
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Partner lab</label>
+                    <select
+                      value={partnerLabId}
+                      onChange={(e) => setPartnerLabId(e.target.value)}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                    >
+                      {/* An inactive lab is missing from the list — keep it selectable as the current value. */}
+                      {!partnerLabs.some((l) => String(l.id) === String(order.partner_lab_id)) && (
+                        <option value={String(order.partner_lab_id)}>{order.partner_lab_name}</option>
+                      )}
+                      {partnerLabs.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
+                    {labChanged && (
+                      <p className="text-xs text-amber-600 mt-1">Prices below were re-filled from {partnerLabs.find((l) => String(l.id) === partnerLabId)?.name ?? 'the new lab'}'s rates — check them before saving.</p>
+                    )}
+                  </div>
                 )}
                 {!isIls && (
                   <p className="text-xs text-gray-400 mt-1">Editing here updates this customer's profile everywhere, not just this order.</p>

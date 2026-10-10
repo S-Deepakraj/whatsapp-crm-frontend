@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchTests } from '../store/testCatalogSlice';
 import { fetchPartnerLabs } from '../store/partnerLabSlice';
-import { createSelfCollectedOrder } from '../store/orderSlice';
+import { createSelfCollectedOrder, updateOrder } from '../store/orderSlice';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 import { Button } from './ui/button';
@@ -12,13 +12,16 @@ import { Button } from './ui/button';
 // construction, not by hiding one. The one exception is the walk-in
 // "amount collected" field: a lump total, not a catalog price lookup —
 // the technician still never sees test pricing.
-export default function SelfCollectedOrderModal({ onClose, onCreated }) {
+// Pass `order` to edit one the technician added themselves — the channel
+// and walk-in customer are fixed then; tests, lab and patient name aren't.
+export default function SelfCollectedOrderModal({ order, onClose, onCreated }) {
   const dispatch = useAppDispatch();
   const tests = useAppSelector((s) => s.testCatalog.data);
   const partnerLabs = useAppSelector((s) => s.partnerLabs.data);
+  const isEdit = !!order;
 
-  const [channel, setChannel] = useState('walk_in');
-  const [testCatalogIds, setTestCatalogIds] = useState([]);
+  const [channel, setChannel] = useState(order?.channel || 'walk_in');
+  const [testCatalogIds, setTestCatalogIds] = useState(order ? order.test_lines.map((l) => l.testCatalogId) : []);
   const [testQuery, setTestQuery] = useState('');
   const [amount, setAmount] = useState('');
 
@@ -30,8 +33,8 @@ export default function SelfCollectedOrderModal({ onClose, onCreated }) {
   const [newCustomerName, setNewCustomerName] = useState('');
 
   // ils
-  const [partnerLabId, setPartnerLabId] = useState('');
-  const [patientName, setPatientName] = useState('');
+  const [partnerLabId, setPartnerLabId] = useState(order?.partner_lab_id ? String(order.partner_lab_id) : '');
+  const [patientName, setPatientName] = useState(order?.patient_name || '');
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -63,6 +66,32 @@ export default function SelfCollectedOrderModal({ onClose, onCreated }) {
     setError(null);
 
     if (testCatalogIds.length === 0) return setError('Pick at least one test');
+
+    if (isEdit) {
+      const changes = { testCatalogIds };
+      if (channel === 'walk_in') {
+        if (amount.trim()) {
+          if (Number(amount) <= 0) return setError('Enter a valid amount');
+          changes.amount = Number(amount);
+        }
+      } else {
+        if (!partnerLabId) return setError('Pick a partner lab');
+        if (!patientName.trim()) return setError('Enter the patient name');
+        changes.partnerLabId = Number(partnerLabId);
+        changes.patientName = patientName.trim();
+      }
+
+      setSaving(true);
+      const result = await dispatch(updateOrder({ id: order.id, ...changes }));
+      setSaving(false);
+      if (updateOrder.fulfilled.match(result)) {
+        onCreated?.();
+        onClose();
+      } else {
+        setError(result.error?.message || 'Failed to update order.');
+      }
+      return;
+    }
 
     const payload = { channel, testCatalogIds };
     if (channel === 'walk_in') {
@@ -97,15 +126,27 @@ export default function SelfCollectedOrderModal({ onClose, onCreated }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-bold mb-4">Add Order</h2>
+        <h2 className="text-lg font-bold mb-4">
+          {isEdit ? `Edit ${channel === 'walk_in' ? 'Walk-in' : 'ILS'} Order` : 'Add Order'}
+        </h2>
 
-        <div className="flex gap-1 mb-4">
-          <Button type="button" variant={channel === 'walk_in' ? 'default' : 'outline'} size="sm" onClick={() => { setChannel('walk_in'); setAmount(''); }}>Walk-in</Button>
-          <Button type="button" variant={channel === 'ils' ? 'default' : 'outline'} size="sm" onClick={() => { setChannel('ils'); setAmount(''); }}>ILS (Partner Lab)</Button>
-        </div>
+        {!isEdit && (
+          <div className="flex gap-1 mb-4">
+            <Button type="button" variant={channel === 'walk_in' ? 'default' : 'outline'} size="sm" onClick={() => { setChannel('walk_in'); setAmount(''); }}>Walk-in</Button>
+            <Button type="button" variant={channel === 'ils' ? 'default' : 'outline'} size="sm" onClick={() => { setChannel('ils'); setAmount(''); }}>ILS (Partner Lab)</Button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {channel === 'walk_in' ? (
+          {isEdit && channel === 'walk_in' ? (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Patient</label>
+              <div className="border rounded px-3 py-2 text-sm bg-gray-50 text-gray-600">
+                {order.customer_name} — {order.customer_phone}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Wrong patient? Delete this order and add it again.</p>
+            </div>
+          ) : channel === 'walk_in' ? (
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Patient phone</label>
               <input
@@ -203,10 +244,14 @@ export default function SelfCollectedOrderModal({ onClose, onCreated }) {
                 type="number" min="0.01" step="0.01"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="Leave blank if unsure"
+                placeholder={isEdit ? 'Leave blank to keep as is' : 'Leave blank if unsure'}
                 className="w-full border rounded px-3 py-2 text-sm"
               />
-              <p className="text-xs text-gray-400 mt-1">Leave blank and the owner will price it later.</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {isEdit
+                  ? 'Enter the full amount again only if it changed. Newly added tests are otherwise priced by the owner.'
+                  : 'Leave blank and the owner will price it later.'}
+              </p>
             </div>
           )}
 
@@ -214,7 +259,9 @@ export default function SelfCollectedOrderModal({ onClose, onCreated }) {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Creating…' : 'Create Order'}</Button>
+            <Button type="submit" disabled={saving}>
+              {isEdit ? (saving ? 'Saving…' : 'Save Changes') : (saving ? 'Creating…' : 'Create Order')}
+            </Button>
           </div>
         </form>
       </div>

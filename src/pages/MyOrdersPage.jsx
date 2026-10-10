@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { fetchOrders, updateOrderStatus, uploadReport } from '../store/orderSlice';
+import { fetchOrders, updateOrderStatus, uploadReport, deleteOrder } from '../store/orderSlice';
 import SelfCollectedOrderModal from '../components/SelfCollectedOrderModal';
 import api from '../services/api';
 import { Button } from '../components/ui/button';
@@ -27,13 +27,17 @@ function formatTime(timeStr) {
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-function OrderCard({ order, onMarkReached, onMarkCollected, onReportIssue, onUploadReport, onViewReport }) {
+function OrderCard({ order, technicianId, onMarkReached, onMarkCollected, onReportIssue, onUploadReport, onViewReport, onEdit, onDelete }) {
   const fileInputRef = useRef(null);
   const name = order.channel === 'ils' ? order.patient_name : order.customer_name;
   const canMarkReached = order.status === 'assigned';
   const canMarkCollected = order.status === 'reached';
   const canReportIssue = ['assigned', 'reached'].includes(order.status);
   const canUploadReport = ['collected', 'reached'].includes(order.status);
+  // Only orders this technician added themselves, until collected — same
+  // rule the backend enforces (TECHNICIAN_MODIFIABLE_STATUSES).
+  const canModify = order.created_by_technician_id === technicianId
+    && ['assigned', 'reached', 'issue'].includes(order.status);
 
   return (
     <li className="bg-white rounded-xl shadow-sm border p-4">
@@ -78,6 +82,10 @@ function OrderCard({ order, onMarkReached, onMarkCollected, onReportIssue, onUpl
           {order.has_report && (
             <Button size="sm" variant="outline" onClick={() => onViewReport(order)}>View Report</Button>
           )}
+          {canModify && <Button size="sm" variant="outline" onClick={() => onEdit(order)}>Edit</Button>}
+          {canModify && (
+            <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => onDelete(order)}>Delete</Button>
+          )}
         </div>
       </div>
     </li>
@@ -87,8 +95,10 @@ function OrderCard({ order, onMarkReached, onMarkCollected, onReportIssue, onUpl
 export default function MyOrdersPage() {
   const dispatch = useAppDispatch();
   const { data: orders, loading } = useAppSelector((s) => s.orders);
+  const technicianId = useAppSelector((s) => s.auth.user?.technicianId);
   const [date, setDate] = useState(today());
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
   const [issueOrderId, setIssueOrderId] = useState(null);
   const [issueNote, setIssueNote] = useState('');
 
@@ -108,6 +118,13 @@ export default function MyOrdersPage() {
     await dispatch(updateOrderStatus({ id: issueOrderId, status: 'issue', note: issueNote.trim() || null }));
     setIssueOrderId(null);
     setIssueNote('');
+  }
+
+  function handleDelete(order) {
+    const name = order.channel === 'ils' ? order.patient_name : order.customer_name;
+    if (window.confirm(`Delete this order for ${name}? This cannot be undone.`)) {
+      dispatch(deleteOrder(order.id));
+    }
   }
 
   function handleUploadReport(order, file) {
@@ -143,6 +160,9 @@ export default function MyOrdersPage() {
             <OrderCard
               key={o.id}
               order={o}
+              technicianId={technicianId}
+              onEdit={setEditingOrder}
+              onDelete={handleDelete}
               onMarkReached={handleMarkReached}
               onMarkCollected={handleMarkCollected}
               onReportIssue={setIssueOrderId}
@@ -174,6 +194,10 @@ export default function MyOrdersPage() {
 
       {showAddModal && (
         <SelfCollectedOrderModal onClose={() => setShowAddModal(false)} onCreated={refetch} />
+      )}
+
+      {editingOrder && (
+        <SelfCollectedOrderModal order={editingOrder} onClose={() => setEditingOrder(null)} onCreated={refetch} />
       )}
     </div>
   );
