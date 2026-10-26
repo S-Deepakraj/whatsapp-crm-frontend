@@ -9,6 +9,7 @@ import AddPaymentModal from '../components/AddPaymentModal';
 import Pagination from '../components/Pagination';
 import api from '../services/api';
 import { buildWhatsAppLink } from '../utils/whatsapp';
+import { outsourceLines } from '../utils/orderTests';
 import { buildOrderConfirmationMessage, buildOrderReminderMessage, buildOrderReportMessage, buildOrderCollectionAckMessage } from '../utils/messageBuilder';
 import { Button } from '../components/ui/button';
 import {
@@ -397,8 +398,11 @@ export default function OrdersPage() {
           <ul className="space-y-3">
             {orders.map((o) => {
               const needsPricing = o.test_lines.some((l) => l.agreedPrice == null);
-              const agreedTotal = needsPricing ? null : o.test_lines.reduce((s, l) => s + parseFloat(l.agreedPrice), 0);
+              const outLines = outsourceLines(o);
+              const agreedTotal = needsPricing ? null : o.test_lines.reduce((s, l) => s + parseFloat(l.agreedPrice), 0)
+                + outLines.reduce((s, l) => s + parseFloat(l.agreedPrice), 0);
               const b2bTotal = o.test_lines.reduce((s, l) => s + (parseFloat(l.b2bRate) || 0), 0);
+              const outsourceCost = outLines.reduce((s, l) => s + (parseFloat(l.costAtBooking) || 0), 0);
               const paidAmount = parseFloat(o.paid_amount) || 0;
               const isFullyPaid = agreedTotal != null && paidAmount >= agreedTotal && agreedTotal > 0;
               const paymentChipClass = isFullyPaid
@@ -456,13 +460,22 @@ export default function OrdersPage() {
                     {o.channel === 'home_collection' && <p className="text-xs text-gray-500">{o.collection_address}</p>}
                     <p className="text-xs text-gray-600">
                       {o.test_lines.map((l) => l.testName).join(', ')}
+                      {o.test_lines.length > 0 && outLines.length > 0 && ', '}
+                      {o.outsource_orders?.map((oo, idx) => (
+                        <span key={oo.id}>
+                          {idx > 0 && ', '}
+                          {oo.lines.map((l) => l.testName).join(', ')}
+                          <span className="ml-1 text-[11px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-700">→ {oo.outsourceLabName}</span>
+                        </span>
+                      ))}
                       {' — '}
                       {needsPricing ? (
                         <span className="font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Needs Pricing</span>
                       ) : (
                         <span className="font-medium">₹{agreedTotal.toLocaleString('en-IN')}</span>
                       )}
-                      <span className="text-gray-400"> · B2B cost ₹{b2bTotal.toLocaleString('en-IN')}</span>
+                      {o.test_lines.length > 0 && <span className="text-gray-400"> · B2B cost ₹{b2bTotal.toLocaleString('en-IN')}</span>}
+                      {outLines.length > 0 && <span className="text-gray-400"> · Outsource cost ₹{outsourceCost.toLocaleString('en-IN')}</span>}
                     </p>
                     {o.status === 'issue' && o.issue_note && (
                       <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 inline-block">{o.issue_note}</p>

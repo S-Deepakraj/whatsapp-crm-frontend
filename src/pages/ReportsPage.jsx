@@ -95,6 +95,59 @@ function IlsByLabTable({ labs, title = 'Revenue by Partner Lab (ILS)' }) {
   );
 }
 
+// Tests sent to outsource labs, costed in the same period as the rest of
+// their order (see repo.outsourceBillingByLab) — so these costs sum to
+// billing.outsource. Revenue here is the patient rate charged for them.
+function OutsourceByLabTable({ labs, paid }) {
+  if (labs.length === 0 && !paid) return null;
+  const totals = labs.reduce((acc, l) => ({ revenue: acc.revenue + l.revenue, cost: acc.cost + l.cost }), { revenue: 0, cost: 0 });
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-gray-700 mb-2">Outsourced Tests by Lab</h2>
+      <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-gray-500 border-b">
+              <th className="px-4 py-2 font-medium">Lab</th>
+              <th className="px-4 py-2 font-medium">Orders</th>
+              <th className="px-4 py-2 font-medium">Tests</th>
+              <th className="px-4 py-2 font-medium">Patient Rate</th>
+              <th className="px-4 py-2 font-medium">Lab Cost</th>
+              <th className="px-4 py-2 font-medium">Margin</th>
+            </tr>
+          </thead>
+          <tbody>
+            {labs.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">No outsourced tests billed in this period.</td></tr>
+            ) : labs.map((lab) => (
+              <tr key={lab.outsourceLabId} className="border-b last:border-0">
+                <td className="px-4 py-2 font-medium">{lab.outsourceLabName}</td>
+                <td className="px-4 py-2 text-gray-500">{lab.orderCount}</td>
+                <td className="px-4 py-2 text-gray-500">{lab.testCount}</td>
+                <td className="px-4 py-2">{money(lab.revenue)}</td>
+                <td className="px-4 py-2">{money(lab.cost)}</td>
+                <td className="px-4 py-2">{money(lab.margin)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t">
+              <td className="px-4 py-2 font-medium" colSpan={3}>Total</td>
+              <td className="px-4 py-2 font-medium">{money(totals.revenue)}</td>
+              <td className="px-4 py-2 font-bold">{money(totals.cost)}</td>
+              <td className="px-4 py-2 font-medium">{money(totals.revenue - totals.cost)}</td>
+            </tr>
+            <tr>
+              <td className="px-4 py-2 text-gray-500" colSpan={4}>Paid to outsource labs in this period</td>
+              <td className="px-4 py-2 text-gray-500" colSpan={2}>{money(paid)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // Fixed identity → color mapping (never by rank/position) so a method
 // keeps its color regardless of which methods are present in a given
 // period. First six slots of the validated categorical order. Covers
@@ -255,6 +308,9 @@ function SummaryStrip({ report }) {
           Billing credits {money(report.billing.credits)} · debits {money(report.billing.debits)}
         </div>
       )}
+      {report.billing.outsource > 0 && (
+        <div><span className="text-gray-500">Outsource Billing: </span><span className="font-medium">{money(report.billing.outsource)}</span></div>
+      )}
       <div><span className="text-gray-500">Total Expenses: </span><span className="font-medium">{money(report.expenses.total)}</span></div>
       <div className={report.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}>
         <span className="text-gray-500">Net Profit / Takehome: </span><span className="font-bold">{money(report.netProfit)}</span>
@@ -344,17 +400,18 @@ function DailySummaryCards({ report }) {
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Revenue" value={money(report.revenue.total)} trendPct={report.trend.revenue} />
-        <StatCard label="Billing" value={money(report.billing.actual)} trendPct={report.trend.billing} />
+        <StatCard label="Billing" value={money(report.billing.total)} trendPct={report.trend.billing} />
         <StatCard label="Expenses" value={money(report.expenses.total)} trendPct={report.trend.expenses} />
         <StatCard label="Profit" value={money(report.netProfit)} trendPct={report.trend.netProfit} tone={report.netProfit >= 0 ? 'good' : 'bad'} />
       </div>
       <p className="text-xs text-gray-400">
         Revenue: {money(report.revenue.dpsCollected)} DPS collected + {money(report.revenue.ilsReceived)} ILS received
-        {' · '}Billing: {money(report.billing.computed)} computed
+        {' · '}Billing: {money(report.billing.computed)} processing lab computed
         {(report.billing.credits > 0 || report.billing.debits > 0) && (
           <> ({money(report.billing.credits)} credit − / {money(report.billing.debits)} debit +)</>
         )}
-        {' · '}Margin (Revenue − Actual Billing): {money(report.margin.actual)}
+        {report.billing.outsource > 0 && <> + {money(report.billing.outsource)} outsourced</>}
+        {' · '}Margin (Revenue − Billing): {money(report.margin.actual)}
       </p>
     </>
   );
@@ -388,6 +445,7 @@ function DailyTab() {
             <div className="space-y-5">
               <OrderStatsRow orderStats={report.orderStats} />
               <IlsByLabTable labs={report.ilsByLab} />
+              <OutsourceByLabTable labs={report.outsourceByLab} paid={report.outsourcePaid} />
               <ExpensesTable expenses={report.expenses} />
             </div>
           )}
@@ -430,6 +488,7 @@ function WeeklyTab() {
           <OrderStatsRow orderStats={report.orderStats} />
           <PaymentMethodBreakdown paymentMethods={report.paymentMethods} />
           <IlsByLabTable labs={report.ilsByLab} />
+          <OutsourceByLabTable labs={report.outsourceByLab} paid={report.outsourcePaid} />
           <ExpensesTable expenses={report.expenses} />
           <SummaryStrip report={report} />
         </>
@@ -460,6 +519,7 @@ function MonthlyTab() {
           <PaymentMethodBreakdown paymentMethods={report.paymentMethods} />
           <IlsByLabTable labs={report.ilsByLab} />
           <TopLabsSection topLabsByVolume={report.topLabsByVolume} topLabsByMargin={report.topLabsByMargin} />
+          <OutsourceByLabTable labs={report.outsourceByLab} paid={report.outsourcePaid} />
           <ExpensesTable expenses={report.expenses} />
           <ExpenseCategoryTrendChart trend={report.expenseCategoryTrend} />
           <SummaryStrip report={report} />

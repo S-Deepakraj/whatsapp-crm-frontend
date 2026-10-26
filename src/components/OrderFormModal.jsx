@@ -4,6 +4,7 @@ import { createOrder, updateOrder } from '../store/orderSlice';
 import { createCustomer, updateCustomer } from '../store/customerSlice';
 import { fetchTests } from '../store/testCatalogSlice';
 import { fetchPartnerLabs, fetchPartnerLabRates } from '../store/partnerLabSlice';
+import { fetchOutsourceTests } from '../store/outsourceSlice';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 import { Button } from './ui/button';
@@ -15,6 +16,35 @@ const SLOT_PRESETS = [
 ];
 
 const EMPTY_LINE = { testCatalogId: '', testLabel: '', query: '', agreedPrice: '' };
+
+// A test sent to an outsource lab. The lab is chosen per line, here on
+// the order — the same test can go to Lab X on one order and Lab Y on
+// the next (see migration 035).
+const EMPTY_OUT_LINE = { outsourceTestId: '', testLabel: '', query: '', outsourceLabId: '', agreedPrice: '' };
+
+function isBlankLine(l) {
+  return !l.testCatalogId && l.agreedPrice === '' && !l.query.trim();
+}
+
+// Flattens the order's per-lab outsource orders back into form rows.
+function outLinesFromOrder(order) {
+  return (order?.outsource_orders ?? []).flatMap((oo) => oo.lines.map((l) => ({
+    outsourceTestId: l.outsourceTestId,
+    testLabel: l.testName,
+    query: '',
+    outsourceLabId: String(oo.outsourceLabId),
+    outsourceLabName: oo.outsourceLabName,
+    agreedPrice: l.agreedPrice != null ? String(l.agreedPrice) : '',
+  })));
+}
+
+function toOutsourcePayload(outLines) {
+  return outLines.map((l) => ({
+    outsourceTestId: Number(l.outsourceTestId),
+    outsourceLabId: Number(l.outsourceLabId),
+    agreedPrice: parseFloat(l.agreedPrice),
+  }));
+}
 
 const CATEGORY_LABEL = { test: 'Test', profile: 'Profile', package: 'Package', outlab: 'Outlab' };
 
@@ -32,6 +62,8 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
   const dispatch = useAppDispatch();
   const tests = useAppSelector((s) => s.testCatalog.data);
   const partnerLabs = useAppSelector((s) => s.partnerLabs.data);
+  const outsourceTests = useAppSelector((s) => s.outsource.tests);
+  const outsourceTestsLoaded = useAppSelector((s) => s.outsource.testsLoaded);
   const isEdit = !!order;
 
   const [phoneQuery, setPhoneQuery] = useState('');
@@ -73,14 +105,19 @@ export default function OrderFormModal({ order, onClose, onCreated }) {
       // pricing — String(null) would render the literal text "null" in
       // the input, so that case is left blank instead.
       ? order.test_lines.map((l) => ({ testCatalogId: l.testCatalogId, testLabel: l.testName, query: '', agreedPrice: l.agreedPrice != null ? String(l.agreedPrice) : '' }))
-      : [{ ...EMPTY_LINE }]
+      // An outsource-only order has no processing-lab lines to show.
+      : (order?.outsource_orders?.length ? [] : [{ ...EMPTY_LINE }])
   );
+  const [outLines, setOutLines] = useState(() => outLinesFromOrder(order));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => { dispatch(fetchTests()); }, [dispatch]);
   useEffect(() => { dispatch(fetchPartnerLabs()); }, [dispatch]);
+  useEffect(() => {
+    if (!outsourceTestsLoaded) dispatch(fetchOutsourceTests({ includeInactive: true }));
+  }, [dispatch, outsourceTestsLoaded]);
 
   // Prefill agreed price from this lab's negotiated rate when picking a
   // test on an ILS order — left blank (not MRP) if the lab hasn't been
@@ -174,7 +211,61 @@ function updateLine(i, field, value) {
       .slice(0, 8);
   }
 
-  const total = lines.reduce((sum, l) => sum + (parseFloat(l.agreedPrice) || 0), 0);
+  function addOutLine() {
+    setOutLines((prev) => [...prev, { ...EMPTY_OUT_LINE }]);
+  }
+
+  function removeOutLine(i) {
+    setOutLines((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function updateOutLine(i, field, value) {
+    setOutLines((prev) => prev.map((line, idx) => (idx === i ? { ...line, [field]: value } : line)));
+  }
+
+  // A test only one lab offers has nothing to decide, so that lab is
+  // filled in; with several, the lab is left for the owner to pick.
+  function pickOutTest(i, test) {
+    setOutLines((prev) => prev.map((line, idx) => {
+      if (idx !== i) return line;
+      return {
+        ...line,
+        outsourceTestId: test.id,
+        testLabel: test.name,
+        query: '',
+        outsourceLabId: test.labs.length === 1 ? String(test.labs[0].outsourceLabId) : '',
+        agreedPrice: line.agreedPrice || (test.suggested_price != null ? String(test.suggested_price) : ''),
+      };
+    }));
+  }
+
+  function clearOutLineTest(i) {
+    setOutLines((prev) => prev.map((line, idx) => (idx === i ? { ...EMPTY_OUT_LINE, agreedPrice: line.agreedPrice } : line)));
+  }
+
+  function outMatchesFor(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return outsourceTests
+      .filter((t) => t.active && (t.name.toLowerCase().includes(q) || t.test_code?.toLowerCase().includes(q)))
+      .slice(0, 8);
+  }
+
+  function labOptionsFor(line) {
+    const test = outsourceTests.find((t) => t.id === Number(line.outsourceTestId));
+    const options = test?.labs ?? [];
+    // Editing an old order whose lab has since stopped offering the test:
+    // keep that lab visible as the current choice rather than blanking it.
+    if (line.outsourceLabId && !options.some((o) => String(o.outsourceLabId) === line.outsourceLabId)) {
+      return [{ outsourceLabId: Number(line.outsourceLabId), outsourceLabName: `${line.outsourceLabName ?? 'Current lab'} (no longer offered)`, cost: null }, ...options];
+    }
+    return options;
+  }
+
+  const filledLines = lines.filter((l) => !isBlankLine(l));
+  const processingTotal = filledLines.reduce((sum, l) => sum + (parseFloat(l.agreedPrice) || 0), 0);
+  const outsourceTotal = outLines.reduce((sum, l) => sum + (parseFloat(l.agreedPrice) || 0), 0);
+  const total = processingTotal + outsourceTotal;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -204,17 +295,33 @@ function updateLine(i, field, value) {
       setError('End time must be after start time.');
       return;
     }
-    if (lines.some((l) => !l.testCatalogId || l.agreedPrice === '')) {
+    // A fully blank processing-lab row is just the empty starter row —
+    // ignored, so an order can be outsourced tests only.
+    if (filledLines.some((l) => !l.testCatalogId || l.agreedPrice === '')) {
       setError('Fill in a test and agreed price for every line.');
+      return;
+    }
+    if (outLines.some((l) => !l.outsourceTestId || !l.outsourceLabId || l.agreedPrice === '')) {
+      setError('Pick a test, a lab and a patient rate for every outsourced test.');
+      return;
+    }
+    if (filledLines.length === 0 && outLines.length === 0) {
+      setError('Add at least one test.');
       return;
     }
 
     setLoading(true);
     try {
-      const testLines = lines.map((l) => ({
+      const testLines = filledLines.map((l) => ({
         testCatalogId: Number(l.testCatalogId),
         agreedPrice: parseFloat(l.agreedPrice),
       }));
+      const outsourceLines = toOutsourcePayload(outLines);
+      // Re-sent on edit only when changed — the server re-checks every
+      // line's lab still offers its test, which an untouched old order
+      // shouldn't have to pass just to fix a typo in its notes.
+      const outsourceChanged = !isEdit
+        || JSON.stringify(outsourceLines) !== JSON.stringify(toOutsourcePayload(outLinesFromOrder(order)));
 
       if (isEdit) {
         if (!isIls && (customerName.trim() !== order.customer_name || customerPhone.trim() !== order.customer_phone)) {
@@ -235,6 +342,7 @@ function updateLine(i, field, value) {
           scheduledDate,
           notes: notes || null,
           testLines,
+          ...(outsourceChanged ? { outsourceLines } : {}),
           ...(isIls ? { patientName: patientName.trim() } : {}),
           ...(labChanged ? { partnerLabId: Number(partnerLabId) } : {}),
           ...(canEditAddressSlot ? {
@@ -261,6 +369,7 @@ function updateLine(i, field, value) {
           scheduledDate,
           notes: notes || null,
           testLines,
+          outsourceLines,
         }));
 
         if (createOrder.fulfilled.match(result)) {
@@ -289,6 +398,7 @@ function updateLine(i, field, value) {
         scheduledDate,
         notes: notes || null,
         testLines,
+        outsourceLines,
         ...(isHomeCollection ? {
           collectionAddress: collectionAddress.trim(),
           slotStart,
@@ -647,7 +757,7 @@ function updateLine(i, field, value) {
                           onChange={(e) => updateLine(i, 'agreedPrice', e.target.value)}
                           className="w-28 border rounded px-3 py-2 text-sm"
                         />
-                        {lines.length > 1 && (
+                        {(lines.length > 1 || outLines.length > 0) && (
                           <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeLine(i)} className="text-gray-400 hover:text-red-500 text-lg leading-none">×</Button>
                         )}
                       </div>
@@ -655,8 +765,118 @@ function updateLine(i, field, value) {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Outsourced tests — sent to another lab, chosen per test */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Outsourced tests <span className="font-normal text-gray-400">(sent to another lab)</span>
+                </label>
+                <Button type="button" variant="link" size="xs" onClick={addOutLine} className="text-green-600 hover:text-green-700">
+                  + Add outsourced test
+                </Button>
+              </div>
+              {outLines.length > 0 && outsourceTestsLoaded && !outsourceTests.some((t) => t.active) && (
+                <p className="text-xs text-amber-600 mb-2">
+                  No outsourced tests set up yet — add them under Outsourcing → Tests, and each lab's rates under Outsourcing → Labs.
+                </p>
+              )}
+              <div className="space-y-3">
+                {outLines.map((line, i) => {
+                  const suggestions = line.outsourceTestId ? [] : outMatchesFor(line.query);
+                  const labOptions = line.outsourceTestId ? labOptionsFor(line) : [];
+                  const chosen = labOptions.find((o) => String(o.outsourceLabId) === line.outsourceLabId);
+                  const margin = chosen?.cost != null && line.agreedPrice !== '' ? parseFloat(line.agreedPrice) - chosen.cost : null;
+                  return (
+                    <div key={i} className="border rounded-lg p-2 bg-gray-50/60">
+                      <div className="flex gap-2">
+                        <div className="flex-1 relative">
+                          {line.outsourceTestId ? (
+                            <div className="flex items-center justify-between border rounded px-3 py-2 text-sm bg-white">
+                              <span>{line.testLabel}</span>
+                              <Button type="button" variant="link" size="xs" onClick={() => clearOutLineTest(i)} className="text-gray-400 hover:text-red-500">Change</Button>
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
+                              value={line.query}
+                              onChange={(e) => updateOutLine(i, 'query', e.target.value)}
+                              placeholder="Search outsourced test…"
+                              className="w-full border rounded px-3 py-2 text-sm bg-white"
+                            />
+                          )}
+                          {suggestions.length > 0 && (
+                            <ul className="absolute z-10 left-0 right-0 bg-white border rounded mt-1 divide-y text-sm shadow-lg max-h-56 overflow-y-auto">
+                              {suggestions.map((t) => (
+                                <li key={t.id}>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => pickOutTest(i, t)}
+                                    className="w-full h-auto justify-between rounded-none px-3 py-2 font-normal"
+                                  >
+                                    <span>
+                                      {t.name}
+                                      {t.test_code ? <span className="text-gray-400"> · {t.test_code}</span> : null}
+                                    </span>
+                                    <span className="text-xs text-gray-400 shrink-0">
+                                      {t.labs.length ? `${t.labs.length} lab${t.labs.length > 1 ? 's' : ''}` : 'No lab offers this'}
+                                    </span>
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                        <input
+                          type="number" min="0" step="0.01"
+                          placeholder="₹ patient"
+                          value={line.agreedPrice}
+                          onChange={(e) => updateOutLine(i, 'agreedPrice', e.target.value)}
+                          className="w-28 border rounded px-3 py-2 text-sm bg-white"
+                        />
+                        <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeOutLine(i)} className="text-gray-400 hover:text-red-500 text-lg leading-none">×</Button>
+                      </div>
+                      {line.outsourceTestId && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs text-gray-500 shrink-0">Send to</span>
+                          {labOptions.length === 0 ? (
+                            <span className="text-xs text-amber-600">No lab offers this test yet — set a rate under Outsourcing → Labs.</span>
+                          ) : (
+                            <select
+                              value={line.outsourceLabId}
+                              onChange={(e) => updateOutLine(i, 'outsourceLabId', e.target.value)}
+                              className={`flex-1 border rounded px-2 py-1.5 text-sm bg-white ${!line.outsourceLabId ? 'border-amber-400' : ''}`}
+                            >
+                              <option value="">Choose a lab…</option>
+                              {labOptions.map((o) => (
+                                <option key={o.outsourceLabId} value={o.outsourceLabId}>
+                                  {o.outsourceLabName}{o.cost != null ? ` — cost ₹${Number(o.cost).toLocaleString('en-IN')}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {margin != null && (
+                            <span className={`text-xs shrink-0 ${margin >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                              Margin ₹{margin.toLocaleString('en-IN')}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               {total > 0 && (
-                <p className="text-right text-sm font-semibold text-green-700 mt-2">Total agreed: ₹{total.toLocaleString('en-IN')}</p>
+                <p className="text-right text-sm font-semibold text-green-700 mt-2">
+                  Total agreed: ₹{total.toLocaleString('en-IN')}
+                  {outsourceTotal > 0 && processingTotal > 0 && (
+                    <span className="block text-xs font-normal text-gray-500">
+                      ₹{processingTotal.toLocaleString('en-IN')} tests + ₹{outsourceTotal.toLocaleString('en-IN')} outsourced
+                    </span>
+                  )}
+                </p>
               )}
             </div>
 

@@ -1,4 +1,5 @@
 import { renderTemplate } from './whatsapp';
+import { allTestNames } from './orderTests';
 
 const DEFAULTS = {
   followupTemplate: 'Hi {{name}}, just checking in! Hope everything is going well.',
@@ -32,7 +33,7 @@ function formatOrderDate(dateStr) {
 
 export function buildOrderConfirmationMessage(settings, order) {
   const businessName = settings?.businessName || 'us';
-  const tests = order.test_lines.map((l) => l.testName).join(', ');
+  const tests = allTestNames(order).join(', ');
   return `Hi ${order.customer_name}, your home collection with ${businessName} is *confirmed*.\n\n`
     + `*Date:* ${formatOrderDate(order.scheduled_date)}\n`
     + `*Time:* ${formatOrderTime(order.slot_start)} – ${formatOrderTime(order.slot_end)}\n`
@@ -43,7 +44,7 @@ export function buildOrderConfirmationMessage(settings, order) {
 
 export function buildOrderReminderMessage(settings, order) {
   const businessName = settings?.businessName || 'us';
-  const tests = order.test_lines.map((l) => l.testName).join(', ');
+  const tests = allTestNames(order).join(', ');
   return `Hi ${order.customer_name}, this is a reminder from ${businessName} for your home collection *today*.\n\n`
     + `*Time:* ${formatOrderTime(order.slot_start)} – ${formatOrderTime(order.slot_end)}\n`
     + `*Address:* ${order.collection_address}\n`

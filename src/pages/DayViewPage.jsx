@@ -6,6 +6,7 @@ import { fetchTechnicians } from '../store/technicianSlice';
 import CallButton from '../components/CallButton';
 import WhatsAppButton from '../components/WhatsAppButton';
 import { Button } from '../components/ui/button';
+import { allTestNames } from '../utils/orderTests';
 
 const STATUS_STYLES = {
   confirmed:     { label: 'Confirmed',     className: 'bg-blue-100 text-blue-700' },
@@ -150,7 +151,7 @@ function OrderCard({ order: o, technicians, onAssign, assignedTechnicianId }) {
       </div>
       <p className="text-xs text-gray-400">{formatTime(o.slot_start)}–{formatTime(o.slot_end)}</p>
       <p className="text-xs text-gray-500">{o.collection_address}</p>
-      <p className="text-xs text-gray-600">{o.test_lines.map((l) => l.testName).join(', ')}</p>
+      <p className="text-xs text-gray-600">{allTestNames(o).join(', ')}</p>
       {o.status === 'issue' && o.issue_note && (
         <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{o.issue_note}</p>
       )}
@@ -198,7 +199,7 @@ function OrderCard({ order: o, technicians, onAssign, assignedTechnicianId }) {
 
 function buildTechnicianMessage(o) {
   const link = `${window.location.origin}/t/${o.status_token}`;
-  const tests = o.test_lines.map((l) => l.testName).join(', ');
+  const tests = allTestNames(o).join(', ');
   const date = new Date(o.scheduled_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return `*Home Collection Assignment*\n\n`

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ClipboardList, CalendarDays, Wrench, FlaskConical, Bell, Settings as SettingsIcon, LogOut, Building2,
-  Landmark, KeyRound, Star,
+  Landmark, KeyRound, Star, Send,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { logout, resendVerification, fetchCurrentUser } from '../store/authSlice';
@@ -22,6 +22,7 @@ const OWNER_NAV_ITEMS = [
   { to: '/day-view',     label: 'Day View',     icon: CalendarDays },
   { to: '/technicians',  label: 'Technicians',  icon: Wrench },
   { to: '/partner-labs', label: 'Partner Labs', icon: Building2 },
+  { to: '/outsourcing',  label: 'Outsourcing',  icon: Send },
   { to: '/test-catalog', label: 'Test Catalog', icon: FlaskConical },
   { to: '/followups',    label: 'Follow-Ups',   icon: Bell },
   { to: '/reviews',      label: 'Reviews',      icon: Star },

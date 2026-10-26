@@ -20,6 +20,8 @@ import TechniciansPage from './pages/TechniciansPage';
 import TechnicianStatusPage from './pages/TechnicianStatusPage';
 import PartnerLabsPage from './pages/PartnerLabsPage';
 import PartnerLabRatesPage from './pages/PartnerLabRatesPage';
+import OutsourcePage from './pages/OutsourcePage';
+import OutsourceLabRatesPage from './pages/OutsourceLabRatesPage';
 import AccountsPage from './pages/AccountsPage';
 import ExpenseCategoriesPage from './pages/ExpenseCategoriesPage';
 import MyOrdersPage from './pages/MyOrdersPage';
@@ -64,6 +66,8 @@ export default function App() {
       <Route path="/technicians" element={<OwnerRoute><TechniciansPage /></OwnerRoute>} />
       <Route path="/partner-labs" element={<OwnerRoute><PartnerLabsPage /></OwnerRoute>} />
       <Route path="/partner-labs/:id/rates" element={<OwnerRoute><PartnerLabRatesPage /></OwnerRoute>} />
+      <Route path="/outsourcing" element={<OwnerRoute><OutsourcePage /></OwnerRoute>} />
+      <Route path="/outsourcing/labs/:id/rates" element={<OwnerRoute><OutsourceLabRatesPage /></OwnerRoute>} />
       <Route path="/test-catalog" element={<OwnerRoute><TestCatalogPage /></OwnerRoute>} />
       <Route path="/test-catalog/cost-overrides" element={<OwnerRoute><TestCostOverridesPage /></OwnerRoute>} />
       <Route path="/accounts" element={<OwnerRoute><AccountsPage /></OwnerRoute>} />

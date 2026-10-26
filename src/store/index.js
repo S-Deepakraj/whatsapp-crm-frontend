@@ -16,6 +16,7 @@ import billingAdjustmentReducer from './billingAdjustmentSlice';
 import reportReducer      from './reportSlice';
 import testCostOverrideReducer from './testCostOverrideSlice';
 import reviewRequestReducer from './reviewRequestSlice';
+import outsourceReducer   from './outsourceSlice';
 
 export const store = configureStore({
   reducer: {
@@ -36,5 +37,6 @@ export const store = configureStore({
     reports:     reportReducer,
     testCostOverrides: testCostOverrideReducer,
     reviewRequests: reviewRequestReducer,
+    outsource:   outsourceReducer,
   },
 });

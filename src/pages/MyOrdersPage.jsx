@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchOrders, updateOrderStatus, uploadReport, deleteOrder } from '../store/orderSlice';
 import SelfCollectedOrderModal from '../components/SelfCollectedOrderModal';
+import { allTestNames } from '../utils/orderTests';
 import api from '../services/api';
 import { Button } from '../components/ui/button';
 
@@ -66,7 +67,7 @@ function OrderCard({ order, technicianId, onMarkReached, onMarkCollected, onRepo
             )}
           </div>
           {order.collection_address && <p className="text-xs text-gray-500">{order.collection_address}</p>}
-          <p className="text-xs text-gray-600">{order.test_lines.map((l) => l.testName).join(', ')}</p>
+          <p className="text-xs text-gray-600">{allTestNames(order).join(', ')}</p>
           {order.status === 'issue' && order.issue_note && (
             <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 inline-block">{order.issue_note}</p>
           )}
