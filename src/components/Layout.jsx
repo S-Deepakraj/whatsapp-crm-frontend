@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ClipboardList, CalendarDays, Wrench, FlaskConical, Bell, Settings as SettingsIcon, LogOut, Building2,
-  Landmark, KeyRound, Star, Send,
+  Landmark, KeyRound, Star, Send, Sparkles, Globe, BadgePercent,
 } from 'lucide-react';
+import api from '../services/api';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { logout, resendVerification, fetchCurrentUser } from '../store/authSlice';
 import { fetchSettings } from '../store/settingsSlice';
@@ -18,12 +19,15 @@ import { Button } from './ui/button';
 const OWNER_NAV_ITEMS = [
   { to: '/',             label: 'Dashboard',    icon: LayoutDashboard, end: true },
   { to: '/customers',    label: 'Customers',    icon: Users },
+  { to: '/website-bookings', label: 'Website Bookings', icon: Globe, badgeKey: 'newBookings' },
   { to: '/orders',       label: 'Orders',       icon: ClipboardList },
   { to: '/day-view',     label: 'Day View',     icon: CalendarDays },
   { to: '/technicians',  label: 'Technicians',  icon: Wrench },
   { to: '/partner-labs', label: 'Partner Labs', icon: Building2 },
   { to: '/outsourcing',  label: 'Outsourcing',  icon: Send },
   { to: '/test-catalog', label: 'Test Catalog', icon: FlaskConical },
+  { to: '/package-advisor', label: 'Package Advisor', icon: Sparkles },
+  { to: '/offers',       label: 'Website Offers', icon: BadgePercent },
   { to: '/followups',    label: 'Follow-Ups',   icon: Bell },
   { to: '/reviews',      label: 'Reviews',      icon: Star },
   { to: '/accounts',      label: 'Accounts',      icon: Landmark },
@@ -56,6 +60,20 @@ export default function Layout({ children }) {
   useEffect(() => {
     if (!user) dispatch(fetchCurrentUser());
   }, [dispatch, user]);
+
+  // Unhandled website booking requests — refreshed on navigation and
+  // every 2 minutes so a new lead is noticed without reloading.
+  const [badges, setBadges] = useState({});
+  useEffect(() => {
+    if (isTechnician) return undefined;
+    let cancelled = false;
+    const fetchCounts = () => api.get('/booking-requests/counts')
+      .then(({ data }) => { if (!cancelled) setBadges({ newBookings: data.new ?? 0 }); })
+      .catch(() => {});
+    fetchCounts();
+    const timer = setInterval(fetchCounts, 120000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [isTechnician, pathname]);
 
   function handleLogout() {
     dispatch(logout());
@@ -98,6 +116,11 @@ export default function Layout({ children }) {
                       <Link to={item.to}>
                         <Icon />
                         <span>{item.label}</span>
+                        {item.badgeKey && badges[item.badgeKey] > 0 && (
+                          <span className="ml-auto rounded-full bg-orange-500 px-1.5 text-[10px] font-semibold leading-4 text-white group-data-[collapsible=icon]:hidden">
+                            {badges[item.badgeKey]}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

@@ -15,6 +15,7 @@ import SettingsPage from './pages/SettingsPage';
 import OrdersPage from './pages/OrdersPage';
 import TestCatalogPage from './pages/TestCatalogPage';
 import TestCostOverridesPage from './pages/TestCostOverridesPage';
+import PackageAdvisorPage from './pages/PackageAdvisorPage';
 import DayViewPage from './pages/DayViewPage';
 import TechniciansPage from './pages/TechniciansPage';
 import TechnicianStatusPage from './pages/TechnicianStatusPage';
@@ -26,6 +27,8 @@ import AccountsPage from './pages/AccountsPage';
 import ExpenseCategoriesPage from './pages/ExpenseCategoriesPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import ReviewsPage from './pages/ReviewsPage';
+import OffersPage from './pages/OffersPage';
+import BookingRequestsPage from './pages/BookingRequestsPage';
 
 function ProtectedRoute({ children }) {
   const token = useAppSelector((s) => s.auth.token);
@@ -62,6 +65,8 @@ export default function App() {
       <Route path="/followups" element={<OwnerRoute><FollowupsPage /></OwnerRoute>} />
       <Route path="/reviews" element={<OwnerRoute><ReviewsPage /></OwnerRoute>} />
       <Route path="/orders" element={<OwnerRoute><OrdersPage /></OwnerRoute>} />
+      <Route path="/website-bookings" element={<OwnerRoute><BookingRequestsPage /></OwnerRoute>} />
+      <Route path="/offers" element={<OwnerRoute><OffersPage /></OwnerRoute>} />
       <Route path="/day-view" element={<OwnerRoute><DayViewPage /></OwnerRoute>} />
       <Route path="/technicians" element={<OwnerRoute><TechniciansPage /></OwnerRoute>} />
       <Route path="/partner-labs" element={<OwnerRoute><PartnerLabsPage /></OwnerRoute>} />
@@ -70,6 +75,7 @@ export default function App() {
       <Route path="/outsourcing/labs/:id/rates" element={<OwnerRoute><OutsourceLabRatesPage /></OwnerRoute>} />
       <Route path="/test-catalog" element={<OwnerRoute><TestCatalogPage /></OwnerRoute>} />
       <Route path="/test-catalog/cost-overrides" element={<OwnerRoute><TestCostOverridesPage /></OwnerRoute>} />
+      <Route path="/package-advisor" element={<OwnerRoute><PackageAdvisorPage /></OwnerRoute>} />
       <Route path="/accounts" element={<OwnerRoute><AccountsPage /></OwnerRoute>} />
       <Route path="/finance/expense-categories" element={<OwnerRoute><ExpenseCategoriesPage /></OwnerRoute>} />
       <Route path="/settings" element={<OwnerRoute><SettingsPage /></OwnerRoute>} />
