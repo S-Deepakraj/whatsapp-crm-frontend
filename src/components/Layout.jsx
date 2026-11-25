@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ClipboardList, CalendarDays, Wrench, FlaskConical, Bell, Settings as SettingsIcon, LogOut, Building2,
-  Landmark, KeyRound, Star, Send, Sparkles, Globe, BadgePercent,
+  Landmark, KeyRound, Star, Send, Sparkles, Globe, BadgePercent, MessageSquareQuote,
 } from 'lucide-react';
 import api from '../services/api';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
@@ -28,6 +28,7 @@ const OWNER_NAV_ITEMS = [
   { to: '/test-catalog', label: 'Test Catalog', icon: FlaskConical },
   { to: '/package-advisor', label: 'Package Advisor', icon: Sparkles },
   { to: '/offers',       label: 'Website Offers', icon: BadgePercent },
+  { to: '/testimonials', label: 'Testimonials', icon: MessageSquareQuote },
   { to: '/followups',    label: 'Follow-Ups',   icon: Bell },
   { to: '/reviews',      label: 'Reviews',      icon: Star },
   { to: '/accounts',      label: 'Accounts',      icon: Landmark },

@@ -28,6 +28,7 @@ import ExpenseCategoriesPage from './pages/ExpenseCategoriesPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import ReviewsPage from './pages/ReviewsPage';
 import OffersPage from './pages/OffersPage';
+import TestimonialsPage from './pages/TestimonialsPage';
 import BookingRequestsPage from './pages/BookingRequestsPage';
 
 function ProtectedRoute({ children }) {
@@ -67,6 +68,7 @@ export default function App() {
       <Route path="/orders" element={<OwnerRoute><OrdersPage /></OwnerRoute>} />
       <Route path="/website-bookings" element={<OwnerRoute><BookingRequestsPage /></OwnerRoute>} />
       <Route path="/offers" element={<OwnerRoute><OffersPage /></OwnerRoute>} />
+      <Route path="/testimonials" element={<OwnerRoute><TestimonialsPage /></OwnerRoute>} />
       <Route path="/day-view" element={<OwnerRoute><DayViewPage /></OwnerRoute>} />
       <Route path="/technicians" element={<OwnerRoute><TechniciansPage /></OwnerRoute>} />
       <Route path="/partner-labs" element={<OwnerRoute><PartnerLabsPage /></OwnerRoute>} />
